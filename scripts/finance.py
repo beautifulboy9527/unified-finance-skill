@@ -93,6 +93,19 @@ from features.options import (
     implied_volatility,
     analyze_option_chain
 )
+from features.crypto import (
+    get_crypto_quote,
+    get_orderbook,
+    get_ohlcv,
+    get_trending,
+    search_markets,
+    get_multi_exchange_quote
+)
+from features.metals import (
+    get_metal_price,
+    get_all_metals_prices,
+    get_gold_silver_ratio
+)
 
 
 def full_analysis(symbol: str) -> Dict:
@@ -314,6 +327,27 @@ def main():
     opt_parser.add_argument('--type', choices=['call', 'put'], default='call', help='期权类型')
     opt_parser.add_argument('--chain', action='store_true', help='期权链分析')
     
+    # crypto
+    crypto_parser = subparsers.add_parser('crypto', help='加密货币')
+    crypto_sub = crypto_parser.add_subparsers(dest='crypto_type', help='类型')
+    
+    crypto_quote = crypto_sub.add_parser('quote', help='行情')
+    crypto_quote.add_argument('symbol', help='交易对')
+    crypto_quote.add_argument('--exchange', default='kraken', help='交易所')
+    
+    crypto_trend = crypto_sub.add_parser('trending', help='热门')
+    crypto_trend.add_argument('--exchange', default='kraken')
+    crypto_trend.add_argument('--limit', type=int, default=20)
+    
+    crypto_search = crypto_sub.add_parser('search', help='搜索')
+    crypto_search.add_argument('keyword', help='关键词')
+    
+    # metals
+    metals_parser = subparsers.add_parser('metals', help='贵金属')
+    metals_parser.add_argument('metal', nargs='?', default='XAU', help='金属代码')
+    metals_parser.add_argument('--all', action='store_true', help='所有金属')
+    metals_parser.add_argument('--ratio', action='store_true', help='金银比')
+    
     # full
     full_parser = subparsers.add_parser('full', help='完整分析')
     full_parser.add_argument('symbol', help='股票代码')
@@ -457,6 +491,24 @@ def main():
             result = analyze_option_chain(args.S, strikes, args.T, args.r, args.sigma)
         else:
             result = calculate_all_greeks(args.S, args.K, args.T, args.r, args.sigma, args.type)
+    
+    elif args.command == 'crypto':
+        if args.crypto_type == 'quote':
+            result = get_crypto_quote(args.symbol, args.exchange)
+        elif args.crypto_type == 'trending':
+            result = get_trending(args.exchange, args.limit)
+        elif args.crypto_type == 'search':
+            result = search_markets(args.keyword)
+        else:
+            result = get_crypto_quote('BTC/USDT', 'kraken')
+    
+    elif args.command == 'metals':
+        if args.all:
+            result = get_all_metals_prices()
+        elif args.ratio:
+            result = get_gold_silver_ratio()
+        else:
+            result = get_metal_price(args.metal)
     
     elif args.command == 'full':
         result = full_analysis(args.symbol)
