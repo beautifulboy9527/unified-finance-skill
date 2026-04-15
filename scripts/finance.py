@@ -87,6 +87,12 @@ from features.search import (
     aggregate_search,
     search_finance_news
 )
+from features.options import (
+    black_scholes_price,
+    calculate_all_greeks,
+    implied_volatility,
+    analyze_option_chain
+)
 
 
 def full_analysis(symbol: str) -> Dict:
@@ -298,6 +304,16 @@ def main():
     search_parser.add_argument('--engine', choices=['ddg', 'baidu', 'jina', 'all'], default='all')
     search_parser.add_argument('--max', type=int, default=5)
     
+    # options
+    opt_parser = subparsers.add_parser('options', help='期权分析')
+    opt_parser.add_argument('--S', type=float, required=True, help='标的价格')
+    opt_parser.add_argument('--K', type=float, required=True, help='行权价')
+    opt_parser.add_argument('--T', type=float, default=0.25, help='到期时间 (年)')
+    opt_parser.add_argument('--r', type=float, default=0.05, help='无风险利率')
+    opt_parser.add_argument('--sigma', type=float, default=0.2, help='波动率')
+    opt_parser.add_argument('--type', choices=['call', 'put'], default='call', help='期权类型')
+    opt_parser.add_argument('--chain', action='store_true', help='期权链分析')
+    
     # full
     full_parser = subparsers.add_parser('full', help='完整分析')
     full_parser.add_argument('symbol', help='股票代码')
@@ -434,6 +450,13 @@ def main():
             result = search_jina(args.query, args.max)
         else:
             result = aggregate_search(args.query)
+    
+    elif args.command == 'options':
+        if args.chain:
+            strikes = [args.S * 0.8, args.S * 0.9, args.S, args.S * 1.1, args.S * 1.2]
+            result = analyze_option_chain(args.S, strikes, args.T, args.r, args.sigma)
+        else:
+            result = calculate_all_greeks(args.S, args.K, args.T, args.r, args.sigma, args.type)
     
     elif args.command == 'full':
         result = full_analysis(args.symbol)
