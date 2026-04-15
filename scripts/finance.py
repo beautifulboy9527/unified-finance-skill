@@ -25,7 +25,7 @@ from core.quote import get_quote, get_quotes, detect_market
 from core.technical import analyze_technical
 from core.financial import get_financial_summary, get_fundflow
 from features.liquidity import analyze_liquidity
-from features.sentiment import analyze_sentiment
+from features.sentiment_enhanced import analyze_sentiment
 from features.chart import generate_chart, generate_full_chart
 from features.correlation import (
     discover_correlated,
