@@ -116,6 +116,117 @@ def get_fundflow(symbol):
     except Exception as e:
         return f"Error: {str(e)}"
 
+def get_kline_data(symbol, period='1mo'):
+    """
+    获取K线数据
+    
+    Args:
+        symbol: 股票代码
+        period: 时间周期 (1w/1mo/3mo)
+    
+    Returns:
+        list: [{date, open, high, low, close, volume}, ...]
+    """
+    try:
+        clean_symbol = str(symbol).replace('.HK', '').replace('.SS', '').replace('.SZ', '')
+        
+        # 计算天数
+        days_map = {'1w': 7, '1mo': 30, '3mo': 90}
+        days = days_map.get(period, 30)
+        
+        result = subprocess.run(
+            ['python', '-m', 'stock', 'kline', clean_symbol, '--count', str(days)],
+            capture_output=True,
+            text=True,
+            cwd=r'C:\Users\Administrator\.openclaw\workspace\.agents\skills\agent-stock',
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            # 解析 K 线数据
+            output = result.stdout
+            kline_data = _parse_kline_output(output)
+            return kline_data
+        else:
+            # 尝试使用 akshare
+            return _get_kline_akshare(clean_symbol, days)
+    except Exception as e:
+        # 尝试备用数据源
+        try:
+            return _get_kline_akshare(symbol, days)
+        except:
+            return []
+
+def _parse_kline_output(output):
+    """解析 agent-stock 的 K 线输出"""
+    kline_data = []
+    lines = output.strip().split('\n')
+    
+    for line in lines:
+        # 跳过标题行和分隔符
+        if '时间' in line or '开盘价' in line or '收盘价' in line or line.startswith('```'):
+            continue
+        
+        # 解析 CSV 格式: 日期,开盘价,收盘价,最高价,最低价,成交量,成交额
+        if ',' in line:
+            try:
+                import re
+                # 提取数字
+                parts = line.split(',')
+                
+                if len(parts) >= 5:
+                    # 清理数据（去掉中文单位）
+                    date = parts[0].strip()
+                    # 提取数字（去掉可能的中文后缀）
+                    open_price = float(re.match(r'[\d.]+', parts[1]).group())
+                    close_price = float(re.match(r'[\d.]+', parts[2]).group())
+                    high_price = float(re.match(r'[\d.]+', parts[3]).group())
+                    low_price = float(re.match(r'[\d.]+', parts[4]).group())
+                    volume = int(float(re.match(r'[\d.]+', parts[5]).group())) if len(parts) > 5 else 0
+                    
+                    kline_data.append({
+                        'date': date,
+                        'open': open_price,
+                        'high': high_price,
+                        'low': low_price,
+                        'close': close_price,
+                        'volume': volume
+                    })
+            except Exception as e:
+                continue
+    
+    return kline_data
+
+def _get_kline_akshare(symbol, days):
+    """使用 akshare 获取 K 线数据（备用）"""
+    try:
+        import akshare as ak
+        import pandas as pd
+        
+        # 获取股票历史数据
+        df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
+        
+        if df is not None and len(df) > 0:
+            # 取最近 N 天
+            df = df.tail(days)
+            
+            kline_data = []
+            for _, row in df.iterrows():
+                kline_data.append({
+                    'date': str(row['日期']),
+                    'open': float(row['开盘']),
+                    'high': float(row['最高']),
+                    'low': float(row['最低']),
+                    'close': float(row['收盘']),
+                    'volume': int(row['成交量'])
+                })
+            
+            return kline_data
+    except Exception as e:
+        print(f"akshare 获取失败: {e}")
+    
+    return []
+
 if __name__ == '__main__':
     # 测试
     print("测试 A 股行情:")

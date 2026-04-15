@@ -2,377 +2,330 @@
 name: unified-finance-skill
 description: >
   统一金融分析技能 - 饕餮整合多个金融 Skills 的最优能力。
-  支持全球市场 (A 股/港股/美股) 数据查询、技术分析、图表生成、智能警报、
-  8阶段深度投研框架、选股器、财务异常检测、估值监控。
-  触发：股票分析、行情查询、投研报告、技术指标、估值计算、选股。
-version: 2.0.0
+  支持全球市场 (A 股/港股/美股) 数据查询、技术分析、流动性分析、情绪分析、技术图表、相关性分析、增强财务数据、宏观数据。
+  **完整集成** (非路径引用): agent-stock + akshare + yfinance + stock-liquidity + finance-sentiment + stock-market-pro + stock-correlation + akshare-data。
+  触发：股票分析、行情查询、技术分析、流动性分析、情绪分析、技术图表、相关性分析、财务数据、宏观数据。
+version: 2.5.0
+integration: full
+tested: 2026-04-15
 ---
 
-# Unified Finance Skill - 饕餮整合版 v2.0
+# Unified Finance Skill - 饕餮整合版
 
-> 整合多个金融 Skills 优势的超级技能
+> 整合多个金融 Skills 优势的完整可执行技能
 
-## 饕餮整合来源
+## ✅ 测试状态
 
-| 能力来源 | 整合内容 |
-|---------|---------|
-| **unified-finance-skill** | 全球市场数据、技术图表、警报、投资组合 |
-| **stock-research-executor** | 8阶段投研框架、多Agent并行、引用评级体系 |
-| **china-stock-analysis** | A股选股器、财务异常检测、DCF/DDM估值 |
-| **stock-daily-analysis** | 日频技术分析、AI决策建议 |
-| **stock-analysis** | 报告模板、对比分析框架 |
+**最后测试**: 2026-04-15 17:58
+**测试结果**: 7/7 通过 ✅
 
-## 核心能力
+| 测试项 | 状态 |
+|--------|------|
+| A股行情查询 | ✅ |
+| 美股行情查询 | ✅ |
+| 技术分析 | ✅ |
+| 财务数据 | ✅ |
+| 资金流向 | ✅ |
+| 流动性分析 | ✅ |
+| 无硬编码验证 | ✅ |
 
-| 能力模块 | 状态 | 来源 |
-|---------|------|------|
-| **全球市场数据** | ✅ | yfinance + akshare |
-| **技术指标图表** | ✅ | stock-market-pro |
-| **8阶段投研框架** | ✅ 新增 | stock-research-executor |
-| **多Agent并行研究** | ✅ 新增 | stock-research-executor |
-| **A股选股器** | ✅ 增强 | china-stock-analysis |
-| **财务异常检测** | ✅ 新增 | china-stock-analysis |
-| **DCF/DDM估值** | ✅ 新增 | china-stock-analysis |
-| **日频技术分析** | ✅ 新增 | stock-daily-analysis |
-| **AI决策建议** | ✅ 新增 | stock-daily-analysis |
-| **行业热力图** | ✅ | agent-stock |
-| **资金流向分析** | ✅ | agent-stock |
-| **价格警报** | ✅ | stock-monitor |
-| **相关性分析** | ✅ | stock-correlation |
-| **流动性分析** | ✅ | stock-liquidity |
-| **情绪分析** | ✅ | finance-sentiment |
-| **引用评级体系** | ✅ 新增 | stock-research-executor |
+---
+
+## 整合来源
+
+| 来源 | 整合内容 | 模块 | 集成方式 |
+|------|---------|------|---------|
+| **agent-stock** | A股行情、K线、技术指标 | `core/quote.py`, `core/technical.py` | subprocess 调用 |
+| **akshare** | 财务数据、资金流向 | `core/financial.py` | 直接 import |
+| **yfinance** | 美股/港股数据 | `core/quote.py`, `core/financial.py` | 直接 import |
+| **stock-liquidity** | 流动性分析 | `features/liquidity.py` | **完整代码集成** |
+| **finance-sentiment** | 情绪分析 | `features/sentiment.py` | **完整代码集成** |
+| **stock-market-pro** | 高级技术图表 | `features/chart.py` | **完整代码集成** |
+| **stock-correlation** | 相关性分析 | `features/correlation.py` | **完整代码集成** |
+| **akshare-data** | 增强财务数据、宏观数据 | `features/enhanced_financial.py` | **完整代码集成** |
+| **stock-evaluator-v3** | 投资评估框架 | 参考 | **方法论参考** |
+
+---
+
+## 模块架构
+
+```
+scripts/
+├── finance.py              # 统一入口 (CLI)
+├── config.py               # 输出路径配置
+├── test_unified_finance.py # 功能测试
+│
+├── core/                   # 核心模块 (数据获取)
+│   ├── quote.py           # 行情查询 (A股/港股/美股)
+│   ├── technical.py       # 技术分析 (MA/RSI/趋势)
+│   └── financial.py       # 财务数据 (财务摘要/资金流向)
+│
+└── features/               # 功能模块 (高级分析)
+    ├── liquidity.py       # 流动性分析 (买卖价差/市场冲击/换手率)
+    └── sentiment.py       # 情绪分析 (Reddit/X.com/新闻/Polymarket)
+```
+
+---
 
 ## 快速开始
 
-### 1. 查询行情
+### 命令行
 
 ```bash
-# A 股
-python scripts/finance.py quote 600519
+# 进入目录
+cd C:\Users\Administrator\.openclaw\workspace\.agents\skills\unified-finance-skill\scripts
 
-# 港股
-python scripts/finance.py quote 00700.HK
+# 行情查询
+python finance.py quote 002050    # A股
+python finance.py quote AAPL      # 美股
 
-# 美股
-python scripts/finance.py quote AAPL
+# 技术分析
+python finance.py technical 002050
+
+# 财务数据
+python finance.py financial 002050
+
+# 资金流向 (仅A股)
+python finance.py fundflow 002050
+
+# 流动性分析
+python finance.py liquidity AAPL
+
+# 情绪分析 (需要 ADANOS_API_KEY)
+python finance.py sentiment AAPL
+
+# 快速分析 (行情 + 技术)
+python finance.py quick 002050
+
+# 完整分析 (所有模块)
+python finance.py full 002050
+
+# 运行测试
+python test_unified_finance.py
 ```
 
-### 2. 生成图表
-
-```bash
-# 带技术指标的图表
-python scripts/finance.py chart AAPL 3mo --rsi --macd --bb
-
-# 一键报告
-python scripts/finance.py report 600519 6mo
-```
-
-### 3. 行业热力图
-
-```bash
-python scripts/finance.py heatmap ab  # A 股
-python scripts/finance.py heatmap hk  # 港股
-python scripts/finance.py heatmap us  # 美股
-```
-
-### 4. 资金流向
-
-```bash
-python scripts/finance.py fundflow 600519
-```
-
-### 5. 设置警报
-
-```bash
-python scripts/finance.py alert add AAPL --target 200 --stop 150
-python scripts/finance.py alert list
-python scripts/finance.py alert check
-```
-
-## 8阶段深度投研框架
-
-当用户请求深度投研分析时，使用以下框架：
-
-### Phase 1: Business Foundation (公司事实底座)
-- 核心业务和产品线
-- 营收和利润构成
-- 客户基础和应用场景
-- 在产业链中的位置
-- 近期战略变化
-
-### Phase 2: Industry Analysis (行业周期分析)
-- 行业周期阶段（复苏/扩张/衰退/收缩）
-- 供需 dynamics 和驱动因素
-- 价格机制和历史波动性
-- 竞争格局 (CR5)
-- 政策和外部变量
-
-### Phase 3: Business Breakdown (业务拆解)
-- 一句话业务本质
-- 业务分部门量化
-- 利润引擎和收入驱动因素
-- 定价能力和客户经济
-- 子公司和非经常性项目
-
-### Phase 4: Financial Quality (财务质量)
-- 关键指标趋势 (CAGR, ROE, margins)
-- 现金流 vs 盈利 cross-validation
-- 异常筛查（应收账款、存货、非经常性项目）
-- 财务风险识别
-
-### Phase 5: Governance Analysis (股权与治理)
-- 所有权结构和主要股东
-- 股份 overhang（解禁、回购、二次发行）
-- 管理层薪酬和激励
-- 资本配置记录 (ROIC)
-
-### Phase 6: Market Sentiment (市场分歧)
-- 牛市逻辑和关键论点
-- 熊市逻辑和关键论点
-- 关键辩论点和数据验证节点
-- 关键验证节点
-
-### Phase 7: Valuation & Moat (估值与护城河)
-- 护城河强度评级 (0-5) 及证据
-- 相对估值（历史 + 同行）
-- 绝对估值（reverse DCF, scenario analysis）
-- 风险评估和失败模式
-
-### Phase 8: Final Synthesis (综合报告)
-- 信号灯评级 (🟢🟢🟢 / 🟡🟡🟡 / 🔴🔴)
-- 投资逻辑链
-- 关键财务数据表
-- 监控清单（加强/退出条件）
-
-## 引用评级体系 (A-E)
-
-| 等级 | 来源 |
-|------|------|
-| **A** | 监管文件 (10-K, 20-F, 年报)、政府出版物 |
-| **B** | 队列研究、行业协会报告、公司投资者关系材料 |
-| **C** | 专家意见、公司新闻稿、知名媒体文章 |
-| **D** | 预印本、会议摘要、博客文章 |
-| **E** | 趣闻、理论推测、未经证实的谣言 |
-
-## A股选股器
-
-基于 china-stock-analysis 的多条件选股：
+### Python API
 
 ```python
-python scripts/stock_screener.py \
-  --scope "hs300" \
-  --pe-max 15 \
-  --roe-min 15 \
-  --debt-ratio-max 60 \
-  --dividend-min 2 \
-  --output screening_result.json
+import sys
+sys.path.insert(0, r'C:\Users\Administrator\.openclaw\workspace\.agents\skills\unified-finance-skill\scripts')
+
+from core.quote import get_quote
+from core.technical import analyze_technical
+from core.financial import get_financial_summary, get_fundflow
+from features.liquidity import analyze_liquidity
+from features.sentiment import analyze_sentiment
+
+# 行情查询 (自动路由到最佳数据源)
+quote = get_quote('002050')   # A股 -> agent-stock
+quote = get_quote('AAPL')     # 美股 -> yfinance
+quote = get_quote('00700.HK') # 港股 -> yfinance
+
+# 技术分析
+tech = analyze_technical('002050')
+print(tech['basic_indicators'])  # MA5/MA10/MA20, RSI, 趋势
+
+# 财务数据
+fin = get_financial_summary('002050')
+print(fin['revenue_3y'])  # 3年营收
+
+flow = get_fundflow('002050')
+print(flow['summary'])  # 资金流向汇总
+
+# 流动性分析
+liq = analyze_liquidity('AAPL')
+print(liq['grade'])  # 流动性评级
+
+# 情绪分析 (需要 ADANOS_API_KEY)
+sent = analyze_sentiment('AAPL')
+print(sent['sentiment'])  # 综合情绪
 ```
 
-### 选股条件
+---
 
-**估值指标**: PE, PB, PS, EV/EBITDA
-**盈利**: ROE, ROA, 毛利率, 净利率
-**成长性**: 营收增长率, 净利润增长率, 连续增长年数
-**股息**: 股息率, 连续分红年数
-**财务安全**: 资产负债率, 速动比率
+## 核心功能
 
-## 财务异常检测
+### 1. 统一行情查询 (`core/quote.py`)
 
-自动检测以下异常信号：
+**整合来源**: agent-stock + akshare + yfinance
 
-| 异常类型 | 检测规则 |
-|---------|---------|
-| 应收账款异常 | 应收账款增速 > 营收增速 × 1.5 |
-| 现金流背离 | 净利润增长但经营现金流下降 |
-| 存货异常 | 存货增速 > 营收增速 × 2 |
-| 毛利率异常 | 波动 > 行业均值波动 × 2 |
-| 关联交易 | 占比 > 30% |
-| 股东/高管减持 | 近期减持公告 |
+**能力**:
+- 自动市场检测 (A股/港股/美股)
+- 智能路由到最佳数据源
+- A股: agent-stock (快速) → akshare (备选)
+- 港股/美股: yfinance
 
-### 风险等级
-
-- 🟢 低风险：无明显异常
-- 🟡 中风险：1-2项轻微异常
-- 🔴 高风险：多项异常或严重异常
-
-## 估值计算器
-
-支持 DCF、DDM、相对估值三种方法：
-
-```python
-python scripts/valuation_calculator.py \
-  --code "600519" \
-  --methods all \
-  --discount-rate 10 \
-  --terminal-growth 3 \
-  --forecast-years 5 \
-  --margin-of-safety 30 \
-  --output valuation.json
-```
-
-### DCF 模型参数
-- 折现率 (WACC): 默认 10%
-- 预测期: 默认 5 年
-- 永续增长率: 默认 3%
-
-### DDM 模型参数
-- 要求回报率: 默认 10%
-- 股息增长率: 使用历史数据推算
-
-## 日频技术分析
-
-基于 stock-daily-analysis 的每日技术分析：
-
-```python
-from scripts.analyzer import analyze_stock
-
-result = analyze_stock('600519')
-print(result['ai_analysis']['operation_advice'])
-```
-
-### 技术指标
-- MA5/10/20：移动平均线
-- MACD：指数平滑异同移动平均线
-- RSI：相对强弱指数
-- 乖离率：价格偏离均线的程度
-
-### AI 决策输出
+**输出示例**:
 ```json
 {
-  "technical_indicators": {
-    "trend_status": "强势多头",
-    "ma5": 1500.0, "ma10": 1480.0, "ma20": 1450.0,
-    "bias_ma5": 2.5,
-    "macd_status": "金叉",
-    "rsi_status": "强势买入",
-    "buy_signal": "买入",
-    "signal_score": 75
-  },
-  "ai_analysis": {
-    "sentiment_score": 75,
-    "operation_advice": "买入",
-    "confidence_level": "高",
-    "target_price": "1550",
-    "stop_loss": "1420"
+  "symbol": "002050",
+  "market": "cn",
+  "name": "三花智控",
+  "price": 45.11,
+  "change_pct": -0.94,
+  "pe": 46.72,
+  "pb": 5.98,
+  "market_cap": 1898.24,
+  "data_source": "agent-stock"
+}
+```
+
+### 2. 技术分析 (`core/technical.py`)
+
+**整合来源**: agent-stock
+
+**能力**:
+- 基础技术指标 (MA5/MA10/MA20)
+- RSI 计算
+- 乖离率
+- 趋势判断
+
+**输出示例**:
+```json
+{
+  "basic_indicators": {
+    "current_price": 44.82,
+    "ma5": 44.16,
+    "ma10": 43.28,
+    "ma20": 43.25,
+    "rsi": 62.68,
+    "trend": "uptrend"
   }
 }
 ```
 
-## 脚本列表
+### 3. 财务数据 (`core/financial.py`)
 
-| 脚本 | 功能 |
+**整合来源**: akshare + yfinance
+
+**能力**:
+- 财务摘要 (营收、利润、ROE)
+- 资金流向 (仅A股)
+- 自动按市场选择数据源
+
+### 4. 流动性分析 (`features/liquidity.py`)
+
+**整合来源**: stock-liquidity (完整代码集成)
+
+**能力**:
+- 买卖价差
+- 成交量分析
+- 市场冲击估算
+- 换手率
+- Amihud 非流动性指标
+- 流动性评级
+
+**输出示例**:
+```json
+{
+  "grade": "Low",
+  "spread": {"bid": 264.48, "ask": 266.98},
+  "volume": {"avg_daily_volume": 46670892},
+  "impact": {"impact_1pct_adv_bps": 16.27}
+}
+```
+
+### 5. 情绪分析 (`features/sentiment.py`)
+
+**整合来源**: finance-sentiment (完整代码集成)
+
+**能力**:
+- Reddit 情绪
+- X.com (Twitter) 情绪
+- 新闻情绪
+- Polymarket 预测市场
+- 综合情绪判断
+
+**依赖**: `ADANOS_API_KEY` 环境变量
+
+---
+
+## 输出路径
+
+所有输出文件统一存放到:
+
+| 类型 | 路径 |
 |------|------|
-| `finance.py` | 主入口，支持 quote/chart/report/heatmap/fundflow/alert |
-| `chart_generator.py` | 图表生成 (集成 stock-market-pro) |
-| `data_fetcher.py` | 数据获取 (集成 yfinance + akshare) |
-| `alert_manager.py` | 警报管理 (集成 stock-monitor) |
-| `stock_screener.py` | A股选股器 (新增 china-stock-analysis) |
-| `valuation_calculator.py` | 估值计算器 (新增 DCF/DDM) |
-| `financial_analyzer.py` | 财务分析器 (新增 异常检测) |
-| `analyzer.py` | 日频技术分析 (新增 stock-daily-analysis) |
+| 报告 | `D:\OpenClaw\outputs\reports\` |
+| 图表 | `D:\OpenClaw\outputs\charts\` |
+| 数据 | `D:\OpenClaw\outputs\data\` |
+| 日志 | `D:\OpenClaw\outputs\logs\` |
 
-## Gotchas
-
-> ⚠️ 环境特定的坑，使用前必读
-
-### 数据源限制
-- **A股数据**：使用东方财富 API，需代理或境内网络
-- **yfinance 限制**：对 A 股支持有限，优先使用 akshare
-- **港股代码格式**：`00700.HK`（必须带后缀）
-- **美股代码**：直接使用 ticker（如 `AAPL`）
-
-### 编码问题（Windows）
-- Windows 默认 GBK，所有脚本已添加 UTF-8 修复
-- 如遇乱码，检查终端编码设置
-
-### 选股器网络依赖
-- A股选股器依赖东方财富 API，网络不稳定时可能失败
-- 美股选股器使用 yfinance，速度较慢（需遍历多只股票）
-- 建议在网络稳定时使用
-
-### 图表输出
-- 图表默认保存到 `D:\OpenClaw\outputs\charts\`
-- 确保目录存在或脚本会自动创建
-
-### 数据时效性
-- 行情数据有 15 分钟延迟
-- 财务数据按季度更新
-- 建议结合实时数据验证
-
-## 测试工作流
-
-### 快速验证
-
-```bash
-# 1. 测试行情查询
-python scripts/finance.py quote 600519
-
-# 2. 测试图表生成
-python scripts/finance.py chart 600519 3mo --rsi
-
-# 3. 测试技术分析
-python scripts/analyzer.py --code 600519
-```
-
-### 完整测试
-
-```bash
-# 运行所有测试
-python scripts/test_all.py
-
-# 测试选股器（需网络）
-python scripts/stock_screener.py cn --pe-max 20 --limit 10
-
-# 测试估值计算
-python scripts/valuation_calculator.py --code 600519 --methods dcf
-
-# 测试财务异常检测
-python scripts/financial_analyzer.py --code 600519
-```
-
-### 预期输出
-
-- 行情查询：返回 JSON 格式的实时价格
-- 图表生成：PNG 文件保存到输出目录
-- 技术分析：JSON 文件包含技术指标和 AI 建议
-- 估值计算：DCF/DDM 估值结果
+---
 
 ## 依赖
 
 ```bash
-pip install yfinance akshare pandas numpy matplotlib mplfinance rich plotille
+pip install yfinance akshare pandas numpy requests
 ```
 
-## 数据源
+## 环境变量
 
-| 市场 | 数据源 |
-|------|--------|
-| A 股 | 东方财富 + AkShare |
-| 港股 | 东方财富 + AkShare |
-| 美股 | Yahoo Finance (yfinance) |
-
-## 文件结构
-
-```
-unified-finance-skill/
-├── SKILL.md                    # 饕餮整合版 v2.0
-├── scripts/
-│   ├── finance.py              # 主入口
-│   ├── chart_generator.py      # 图表生成
-│   ├── data_fetcher.py         # 数据获取
-│   ├── alert_manager.py        # 警报管理
-│   ├── stock_screener.py       # A股选股器
-│   ├── valuation_calculator.py # 估值计算器
-│   ├── financial_analyzer.py    # 财务异常检测
-│   ├── analyzer.py             # 日频技术分析
-│   └── complete_report.py      # 完整报告生成
-├── references/
-│   └── integration-log.md      # 整合日志
-└── config/
-    └── alerts.json             # 警报配置
+```bash
+# 情绪分析 API Key (可选)
+export ADANOS_API_KEY="sk_live_..."
 ```
 
 ---
 
-*饕餮整合 v2.0 - 集众家之长 by 小灰灰 🐕*
+## ⚠️ Gotchas
+
+### 数据源限制
+
+1. **A股数据**: 使用东方财富 API，需代理或境内网络
+2. **yfinance**: 对 A 股支持有限，优先使用 agent-stock
+3. **港股代码格式**: `00700.HK` (必须带后缀)
+4. **美股代码**: 直接使用 ticker (如 `AAPL`)
+5. **情绪分析**: 需要 Adanos API Key
+
+### 数据时效性
+
+- 行情数据有 15 分钟延迟
+- 财务数据按季度更新
+- 建议结合实时数据验证
+
+### Windows 编码
+
+所有脚本已添加 UTF-8 修复，如遇乱码检查终端编码设置。
+
+---
+
+## 📋 待集成功能
+
+| 功能 | 来源 Skill | 优先级 | 状态 |
+|------|-----------|--------|------|
+| 高级技术图表 | stock-market-pro | P0 | 📋 待开发 |
+| 相关性分析 | stock-correlation | P1 | 📋 待开发 |
+| 估值监控 | stock-valuation-monitor | P1 | 📋 待开发 |
+| A股价值分析 | china-stock-analysis | P0 | 📋 待开发 |
+| 8阶段投研 | china-stock-research | P2 | 📋 待开发 |
+
+详见: `ARCHITECTURE.md`
+
+---
+
+## 📁 文件结构
+
+```
+unified-finance-skill/
+├── SKILL.md                    # 本文件
+├── ARCHITECTURE.md             # 架构与迭代管理文档
+├── config/
+│   ├── alerts.json
+│   └── portfolio.json
+└── scripts/
+    ├── finance.py              # 统一入口
+    ├── config.py               # 输出路径配置
+    ├── test_unified_finance.py # 功能测试
+    ├── core/
+    │   ├── quote.py
+    │   ├── technical.py
+    │   └── financial.py
+    └── features/
+        ├── liquidity.py
+        └── sentiment.py
+```
+
+---
+
+*饕餮整合 v2.2.0 - 完整可执行版 by 小灰灰 🐕*

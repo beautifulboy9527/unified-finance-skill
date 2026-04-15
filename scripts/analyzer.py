@@ -312,16 +312,49 @@ def main():
     
     args = parser.parse_args()
     
-    # 示例数据 (实际使用时从 data_fetcher 获取)
-    import random
-    base_price = 1500.0
-    sample_prices = [base_price * (1 + random.uniform(-0.03, 0.03)) for _ in range(30)]
-    
-    sample_data = {
-        "current_price": sample_prices[-1],
-        "prices_30d": sample_prices,
-        "name": args.name or "示例股票"
-    }
+    # 从真实数据源获取数据
+    try:
+        from data_fetcher import get_quote, get_kline_data
+        
+        # 获取实时行情
+        quote_str = get_quote(args.code)
+        
+        # 从行情字符串解析当前价格
+        import re
+        price_match = re.search(r'价格:\s*([\d.]+)', quote_str)
+        current_price = float(price_match.group(1)) if price_match else 0
+        
+        # 获取K线数据
+        kline_data = get_kline_data(args.code, period='1mo')
+        
+        if kline_data and len(kline_data) > 0:
+            prices = [item['close'] for item in kline_data]
+            name_match = re.search(r'名称:\s*(\S+)', quote_str)
+            name = args.name or (name_match.group(1) if name_match else args.code)
+        else:
+            # 如果K线数据获取失败，使用近30日模拟数据（基于当前价格）
+            print(f"⚠️ K线数据获取失败，使用模拟数据")
+            prices = [current_price * (1 + (i - 15) * 0.005) for i in range(30)]
+            name = args.name or args.code
+        
+        sample_data = {
+            "current_price": current_price,
+            "prices_30d": prices,
+            "name": name
+        }
+        
+    except Exception as e:
+        print(f"⚠️ 数据获取失败: {e}")
+        print("使用模拟数据进行分析...")
+        # 使用模拟数据（不推荐）
+        import random
+        base_price = 45.0  # 使用更合理的默认值
+        sample_prices = [base_price * (1 + random.uniform(-0.03, 0.03)) for _ in range(30)]
+        sample_data = {
+            "current_price": sample_prices[-1],
+            "prices_30d": sample_prices,
+            "name": args.name or "示例股票"
+        }
     
     analyzer = StockAnalyzer(args.code, sample_data['name'])
     result = analyzer.analyze(sample_data)
