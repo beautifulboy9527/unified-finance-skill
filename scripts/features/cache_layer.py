@@ -237,6 +237,70 @@ class CacheLayer:
         except Exception as e:
             print(f"⚠️ 强制清理失败: {e}")
     
+    def cleanup_cache(
+        self,
+        max_age_days: int = 30,
+        max_size_gb: float = 2.0
+    ) -> Dict:
+        """
+        深度清理缓存
+        
+        Args:
+            max_age_days: 最大保留天数
+            max_size_gb: 最大缓存大小(GB)
+            
+        Returns:
+            清理统计
+        """
+        import shutil
+        
+        result = {
+            'expired_cleaned': 0,
+            'size_before_mb': 0,
+            'size_after_mb': 0,
+            'space_freed_mb': 0
+        }
+        
+        try:
+            # 获取缓存目录大小
+            if os.path.exists(self.cache_dir):
+                total_size = sum(
+                    os.path.getsize(os.path.join(dirpath, filename))
+                    for dirpath, dirnames, filenames in os.walk(self.cache_dir)
+                    for filename in filenames
+                )
+                result['size_before_mb'] = total_size / (1024 * 1024)
+            
+            # 清理过期缓存
+            result['expired_cleaned'] = self._cleanup_expired()
+            
+            # 检查大小限制
+            max_size_bytes = max_size_gb * 1024 * 1024 * 1024
+            if result['size_before_mb'] * 1024 * 1024 > max_size_bytes:
+                # 超过大小限制，清空缓存
+                print(f"⚠️ 缓存超过 {max_size_gb}GB，执行深度清理")
+                self.clear()
+            
+            # 获取清理后大小
+            if os.path.exists(self.cache_dir):
+                total_size = sum(
+                    os.path.getsize(os.path.join(dirpath, filename))
+                    for dirpath, dirnames, filenames in os.walk(self.cache_dir)
+                    for filename in filenames
+                )
+                result['size_after_mb'] = total_size / (1024 * 1024)
+            
+            result['space_freed_mb'] = result['size_before_mb'] - result['size_after_mb']
+            
+            print(f"✅ 缓存清理完成:")
+            print(f"   过期条目: {result['expired_cleaned']} 条")
+            print(f"   释放空间: {result['space_freed_mb']:.2f} MB")
+            
+        except Exception as e:
+            print(f"⚠️ 深度清理失败: {e}")
+        
+        return result
+    
     def get_stats(self) -> Dict:
         """获取缓存统计"""
         total = self.stats['hits'] + self.stats['misses']
@@ -350,6 +414,20 @@ def clear_cache():
 def get_cache_stats():
     """获取缓存统计"""
     return get_cache().get_stats()
+
+
+def cleanup_cache(max_age_days: int = 30, max_size_gb: float = 2.0) -> Dict:
+    """
+    深度清理缓存
+    
+    Args:
+        max_age_days: 最大保留天数
+        max_size_gb: 最大缓存大小(GB)
+        
+    Returns:
+        清理统计
+    """
+    return get_cache().cleanup_cache(max_age_days, max_size_gb)
 
 
 if __name__ == '__main__':
