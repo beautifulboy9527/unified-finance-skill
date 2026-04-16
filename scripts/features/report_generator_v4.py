@@ -28,11 +28,16 @@ def generate_crypto_report_v4(symbol: str, output_dir: str = "D:\\OpenClaw\\outp
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
     from features.complete_crypto_analyzer import analyze_complete
+    from features.kline_chart import get_kline_data
     
     print(f"正在分析 {symbol}...")
     
     # 1. 完整分析
     result = analyze_complete(symbol)
+    
+    # 2. 获取K线数据
+    print("获取K线数据...")
+    kline_data = get_kline_data(symbol, '3mo')
     
     # 2. 提取数据
     market = result.get('market', {})
@@ -241,6 +246,41 @@ def generate_crypto_report_v4(symbol: str, output_dir: str = "D:\\OpenClaw\\outp
     template_vars['conclusion_analysis'] = conclusion_analysis
     template_vars['bullish_reasons'] = bullish_reasons
     template_vars['bearish_risks'] = bearish_risks
+    
+    # 8. 生成K线图HTML
+    kline_html = ''
+    if 'error' not in kline_data:
+        import json
+        
+        # 读取K线图组件模板
+        kline_template_path = os.path.join(
+            os.path.dirname(__file__),
+            'templates',
+            'kline_component.html'
+        )
+        
+        with open(kline_template_path, 'r', encoding='utf-8') as f:
+            kline_template = f.read()
+        
+        # 替换数据
+        kline_html = kline_template.replace(
+            '{candlestick_json}',
+            json.dumps(kline_data['candlestick'])
+        ).replace(
+            '{ma5_json}',
+            json.dumps(kline_data['ma5'])
+        ).replace(
+            '{ma10_json}',
+            json.dumps(kline_data['ma10'])
+        ).replace(
+            '{ma20_json}',
+            json.dumps(kline_data['ma20'])
+        ).replace(
+            '{volume_json}',
+            json.dumps(kline_data['volume'])
+        )
+    
+    template_vars['kline_html'] = kline_html
     
     # 7. 读取模板并填充
     template_path = os.path.join(os.path.dirname(__file__), 'templates', 'crypto_report_v4.html')
