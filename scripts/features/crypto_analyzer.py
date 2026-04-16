@@ -249,10 +249,121 @@ class CryptoAnalyzer:
                 if volatility_ratio > 0.05:  # ATR > 5% 价格
                     result['volatility_warning'] = f"⚠️ 高波动率: {volatility_ratio*100:.1f}% (建议ATR止损倍数3-4)"
             
+            # 新增: 生成专业文字解读
+            result['narrative'] = self._generate_technical_narrative(basic, symbol)
+            
             return result
             
         except Exception as e:
             return {'error': str(e)}
+    
+    def _generate_technical_narrative(self, indicators: Dict, symbol: str) -> str:
+        """
+        生成技术面专业文字解读
+        
+        Args:
+            indicators: 技术指标字典
+            symbol: 股票代码
+            
+        Returns:
+            专业解读文字
+        """
+        if not indicators or indicators.get('current_price') is None:
+            return "技术数据不足，无法生成解读。"
+        
+        current_price = indicators.get('current_price', 0)
+        trend = indicators.get('trend', 'unknown')
+        rsi = indicators.get('rsi', 0)
+        ma5 = indicators.get('ma5', 0)
+        ma10 = indicators.get('ma10', 0)
+        ma20 = indicators.get('ma20', 0)
+        
+        # 构建解读
+        paragraphs = []
+        
+        # 1. 趋势分析
+        if trend == 'uptrend':
+            paragraphs.append(
+                f"{symbol} 当前处于上升趋势，价格({current_price:.2f})站上MA5({ma5:.2f})、MA10({ma10:.2f})、MA20({ma20:.2f})三条均线，"
+                f"形成多头排列，短期动能偏强。"
+            )
+        elif trend == 'downtrend':
+            paragraphs.append(
+                f"{symbol} 当前处于下降趋势，价格({current_price:.2f})低于MA5、MA10、MA20均线，"
+                f"空头排列明显，短期建议观望为主。"
+            )
+        else:
+            paragraphs.append(
+                f"{symbol} 当前处于震荡整理阶段，价格({current_price:.2f})在均线间反复，"
+                f"方向不明确，建议等待突破信号。"
+            )
+        
+        # 2. RSI 分析
+        if rsi:
+            if rsi > 70:
+                paragraphs.append(
+                    f"RSI达到{rsi:.2f}，已进入超买区间(>70)，短期存在回调风险。"
+                    f"若出现顶背离或成交量萎缩，需警惕高位回落。"
+                )
+            elif rsi > 60:
+                paragraphs.append(
+                    f"RSI为{rsi:.2f}，接近超买区域(60-70)，多头力量较强但仍需警惕。"
+                    f"若继续上行突破70，可能进入加速上涨阶段。"
+                )
+            elif rsi < 30:
+                paragraphs.append(
+                    f"RSI仅为{rsi:.2f}，已进入超卖区间(<30)，可能是短期抄底机会。"
+                    f"若出现底背离，反弹概率较大。"
+                )
+            elif rsi < 40:
+                paragraphs.append(
+                    f"RSI为{rsi:.2f}，处于弱势区域(30-40)，空头占优。"
+                    f"需等待RSI回升至50以上再考虑入场。"
+                )
+            else:
+                paragraphs.append(
+                    f"RSI为{rsi:.2f}，处于中性区域(40-60)，多空力量相对平衡。"
+                )
+        
+        # 3. 均线支撑/阻力
+        if ma5 and ma10 and ma20:
+            if current_price > ma20:
+                paragraphs.append(
+                    f"MA20({ma20:.2f})为重要支撑位，若回踩不破可考虑低吸。"
+                    f"短期阻力位关注前高，突破后有望打开上行空间。"
+                )
+            else:
+                paragraphs.append(
+                    f"MA20({ma20:.2f})为上方阻力位，突破该位置才能确认趋势转强。"
+                    f"下方支撑关注近期低点，若跌破可能加速下跌。"
+                )
+        
+        # 4. 综合操作建议
+        if trend == 'uptrend' and rsi and rsi < 70:
+            conclusion = (
+                f"综合来看，{symbol}短期偏多，技术面支撑上涨。"
+                f"建议在MA20附近设置止损，目标可看前高附近。"
+                f"严格执行止损纪律，仓位控制在总资金的10-20%。"
+            )
+        elif trend == 'uptrend' and rsi and rsi > 70:
+            conclusion = (
+                f"虽然趋势向上，但RSI超买提示短期风险。"
+                f"建议等待回调至MA5或MA10支撑位再考虑入场，避免追高。"
+            )
+        elif trend == 'downtrend':
+            conclusion = (
+                f"当前趋势偏空，建议观望为主。"
+                f"等待RSI进入超卖区或出现企稳信号后再考虑布局。"
+            )
+        else:
+            conclusion = (
+                f"技术面信号不明确，建议等待突破方向确认后再操作。"
+                f"关注MA20得失，突破后顺势而为。"
+            )
+        
+        paragraphs.append(conclusion)
+        
+        return "\n\n".join(paragraphs)
     
     def _detect_crypto_signals(self, symbol: str) -> Dict:
         """

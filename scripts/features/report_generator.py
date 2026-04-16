@@ -706,10 +706,19 @@ class ReportGenerator:
         
         <table>
             <tr><th>指标</th><th>数值</th><th>状态</th></tr>
-            <tr><td>趋势</td><td>{basic.get('trend', 'N/A')}</td><td>-</td></tr>
-            <tr><td>RSI</td><td>{basic.get('rsi', 'N/A')}</td><td>{'超买' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] > 70 else '超卖' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] < 30 else '正常'}</td></tr>
+            <tr><td>趋势</td><td>{basic.get('trend', 'N/A')}</td><td>{'📈 多头' if basic.get('trend') == 'uptrend' else '📉 空头' if basic.get('trend') == 'downtrend' else '➡️ 震荡'}</td></tr>
+            <tr><td>RSI</td><td>{basic.get('rsi', 'N/A')}</td><td>{'⚠️ 超买' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] > 70 else '⚠️ 超卖' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] < 30 else '✅ 正常'}</td></tr>
+            <tr><td>MA5</td><td>${basic.get('ma5', 'N/A')}</td><td>短期均线</td></tr>
+            <tr><td>MA10</td><td>${basic.get('ma10', 'N/A')}</td><td>中期均线</td></tr>
+            <tr><td>MA20</td><td>${basic.get('ma20', 'N/A')}</td><td>长期均线</td></tr>
+            <tr><td>ATR</td><td>${basic.get('atr', 'N/A')}</td><td>波动率</td></tr>
             <tr><td>AI建议</td><td>{ai_decision.get('recommendation', 'N/A')}</td><td>置信度 {ai_decision.get('confidence', 0)}%</td></tr>
         </table>
+        
+        <h3>📝 技术面专业解读</h3>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0;">
+            {tech.get('narrative', '暂无解读').replace(chr(10), '<br><br>')}
+        </div>
         
         <h2>⚠️ 六、风险提示</h2>
         
