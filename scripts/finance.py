@@ -111,6 +111,10 @@ from features.analysis_framework import analyze_full
 from features.entry_signals import analyze_entry_signals
 from features.risk_management import analyze_risk
 from features.scoring_engine import score_stock, generate_score_report
+# 新增模块 - 整合自 technical-analysis (理念提升)
+from features.volume_validator import validate_signal_volume
+from features.context_filter import filter_signal_context
+from features.failed_patterns import detect_failed_patterns
 
 
 def full_analysis(symbol: str) -> Dict:
