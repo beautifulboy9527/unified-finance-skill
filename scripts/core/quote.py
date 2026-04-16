@@ -15,6 +15,10 @@ from typing import Dict, Optional
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+# 导入缓存装饰器
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from features.cache_layer import cache_quote
+
 
 def detect_market(symbol: str) -> str:
     """
