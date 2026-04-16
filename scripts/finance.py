@@ -119,6 +119,8 @@ from features.failed_patterns import detect_failed_patterns
 from features.regulation_monitor import monitor_regulations, check_regulatory_risk, summarize_regulations
 # 新增模块 - 整合自 stock-board (打板筛选)
 from features.board_scanner import scan_limit_up, scan_strong_stocks, scan_continuous_boards, analyze_board_market, get_board_opportunities
+# 新增模块 - 整合自 stock-recommend 思路 (地区化分析)
+from features.regional_news import analyze_regional_news, recommend_from_news
 
 
 def full_analysis(symbol: str) -> Dict:
