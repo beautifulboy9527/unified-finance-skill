@@ -106,6 +106,81 @@ def generate_crypto_report_v4(symbol: str, output_dir: str = "D:\\OpenClaw\\outp
     
     template_vars['patterns_html'] = patterns_html
     
+    # 5.5 生成技术面专业解读
+    tech_narrative_parts = []
+    
+    # 趋势分析
+    trend = patterns.get('trend', '')
+    price = indicators.get('price', 0)
+    ma20 = indicators.get('ma20', 0)
+    
+    if trend in ['uptrend', 'strong_uptrend']:
+        tech_narrative_parts.append(
+            f"{symbol}当前处于上升趋势，价格(${price:,.2f})站上MA20(${ma20:,.2f})，"
+            f"多头趋势明确，短期动能偏强。"
+        )
+    elif trend in ['downtrend', 'strong_downtrend']:
+        tech_narrative_parts.append(
+            f"{symbol}当前处于下降趋势，价格(${price:,.2f})低于MA20(${ma20:,.2f})，"
+            f"空头趋势明显，建议观望等待企稳信号。"
+        )
+    else:
+        tech_narrative_parts.append(
+            f"{symbol}当前处于震荡整理阶段，价格在均线间反复，"
+            f"方向不明确，建议等待突破信号。"
+        )
+    
+    # RSI分析
+    rsi = indicators.get('rsi', 0)
+    if rsi > 70:
+        tech_narrative_parts.append(
+            f"RSI达{rsi:.1f}进入超买区(>70)，短期存在回调风险。"
+            f"若出现顶背离或成交量萎缩，需警惕高位回落。"
+        )
+    elif rsi < 30:
+        tech_narrative_parts.append(
+            f"RSI仅{rsi:.1f}已进入超卖区(<30)，可能是短期抄底机会。"
+            f"若出现底背离，反弹概率较大。"
+        )
+    elif rsi > 60:
+        tech_narrative_parts.append(
+            f"RSI为{rsi:.1f}，接近超买区域(60-70)，多头力量较强但仍需警惕。"
+        )
+    else:
+        tech_narrative_parts.append(f"RSI为{rsi:.1f}，处于正常区域。")
+    
+    # MACD分析
+    macd = indicators.get('macd', 0)
+    if patterns.get('macd_signal') == 'bullish':
+        tech_narrative_parts.append(
+            f"MACD金叉确认，柱状图为正({macd:.2f})，上涨动能充沛。"
+        )
+    else:
+        tech_narrative_parts.append(
+            f"MACD死叉，柱状图为负({macd:.2f})，短期动能偏弱。"
+        )
+    
+    # 综合建议
+    adx = indicators.get('adx', 0)
+    if conclusion.get('decision') == 'BUY':
+        tech_narrative_parts.append(
+            f"\n综合技术面分析，ADX为{adx:.1f}，"
+            f"{'趋势强度充足' if adx > 25 else '趋势强度一般'}，"
+            f"建议在支撑位(${patterns.get('support', 0):,.2f})附近设置止损，"
+            f"目标位看阻力位(${patterns.get('resistance', 0):,.2f})。"
+        )
+    elif conclusion.get('decision') == 'SELL':
+        tech_narrative_parts.append(
+            f"\n综合技术面偏空，建议减仓或观望，"
+            f"等待技术面修复后再考虑入场。"
+        )
+    else:
+        tech_narrative_parts.append(
+            f"\n综合技术面中性，建议等待更明确的趋势信号。"
+        )
+    
+    template_vars['technical_narrative'] = '<br><br>'.join(tech_narrative_parts)
+    
     # 5. 生成链上数据行
     onchain_rows = ''
     if onchain.get('hashrate'):
@@ -134,6 +209,38 @@ def generate_crypto_report_v4(symbol: str, output_dir: str = "D:\\OpenClaw\\outp
         '''
     
     template_vars['signals_html'] = signals_html
+    
+    # 7. 生成结论详细分析
+    conclusion_analysis = f"""
+        本报告通过多维度数据分析（市场数据、技术指标、链上数据、合约市场），
+        采用"叠buff"逻辑综合判断 {symbol} 的投资价值。
+        <br><br>
+        综合评分 <strong>{conclusion.get('score', 50)}/100</strong>，
+        看涨信号 <strong style="color: #27ae60;">{conclusion.get('signals_count', {}).get('bullish', 0)}项</strong>，
+        看跌信号 <strong style="color: #e74c3c;">{conclusion.get('signals_count', {}).get('bearish', 0)}项</strong>，
+        信号强度总合 <strong>{conclusion.get('total_strength', 0):+d}</strong>。
+    """
+    
+    # 看涨原因
+    bullish_reasons = ''
+    for s in [sig for sig in signals if sig['strength'] > 0][:5]:
+        bullish_reasons += f'<li>{s["name"]}: {s["desc"]}</li>'
+    
+    if not bullish_reasons:
+        bullish_reasons = '<li>暂无明确看涨信号</li>'
+    
+    # 看跌风险
+    bearish_risks = ''
+    for s in [sig for sig in signals if sig['strength'] < 0][:5]:
+        bearish_risks += f'<li>{s["name"]}: {s["desc"]}</li>'
+    
+    # 添加通用风险
+    bearish_risks += '<li>加密货币价格波动率极高，可能24小时内跌幅超过20%</li>'
+    bearish_risks += '<li>市场流动性可能突然枯竭，无法及时止损</li>'
+    
+    template_vars['conclusion_analysis'] = conclusion_analysis
+    template_vars['bullish_reasons'] = bullish_reasons
+    template_vars['bearish_risks'] = bearish_risks
     
     # 7. 读取模板并填充
     template_path = os.path.join(os.path.dirname(__file__), 'templates', 'crypto_report_v4.html')
