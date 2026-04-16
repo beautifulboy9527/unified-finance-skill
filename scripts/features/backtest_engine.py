@@ -410,13 +410,18 @@ class BacktestEngine:
             elif backtest.get('sharpe_ratio', 0) > 0.5:
                 score += 10
             
-            # 最大回撤 (20分)
-            if backtest.get('max_drawdown', 0) > -0.1:
+            # 最大回撤 (20分) - 回撤越小越好
+            max_dd = backtest.get('max_drawdown', 0)
+            if max_dd > -0.05:  # 回撤 < 5%
                 score += 20
-            elif backtest.get('max_drawdown', 0) > -0.2:
+            elif max_dd > -0.10:  # 回撤 < 10%
+                score += 18
+            elif max_dd > -0.15:  # 回撤 < 15%
                 score += 15
-            elif backtest.get('max_drawdown', 0) > -0.3:
-                score += 10
+            elif max_dd > -0.20:  # 回撤 < 20%
+                score += 12
+            elif max_dd > -0.30:  # 回撤 < 30%
+                score += 8
         
         # 一致性 (10分)
         if 'consistency' in wf and wf['consistency'] > 0.6:
