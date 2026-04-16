@@ -106,6 +106,11 @@ from features.metals import (
     get_all_metals_prices,
     get_gold_silver_ratio
 )
+# 新增模块 - 整合自 sm-analyze, entry-signals, sm-stock-daily
+from features.analysis_framework import analyze_full
+from features.entry_signals import analyze_entry_signals
+from features.risk_management import analyze_risk
+from features.scoring_engine import score_stock, generate_score_report
 
 
 def full_analysis(symbol: str) -> Dict:
@@ -356,6 +361,33 @@ def main():
     quick_parser = subparsers.add_parser('quick', help='快速分析')
     quick_parser.add_argument('symbol', help='股票代码')
     
+    # === 新增命令 - 整合自 sm-analyze, entry-signals, sm-stock-daily ===
+    
+    # score - 综合评分
+    score_parser = subparsers.add_parser('score', help='综合评分 (0-100)')
+    score_parser.add_argument('symbol', help='股票代码')
+    score_parser.add_argument('--market', default='auto', help='市场类型')
+    
+    # framework - 三层分析框架
+    framework_parser = subparsers.add_parser('framework', help='三层分析框架')
+    framework_parser.add_argument('symbol', help='股票代码')
+    framework_parser.add_argument('--market', default='auto', help='市场类型')
+    
+    # signals - 入场信号分析
+    signals_parser = subparsers.add_parser('signals', help='入场信号分析')
+    signals_parser.add_argument('symbol', help='股票代码')
+    
+    # risk - 风险管理
+    risk_parser = subparsers.add_parser('risk', help='风险管理分析')
+    risk_parser.add_argument('symbol', help='股票代码')
+    risk_parser.add_argument('--capital', type=float, default=100000, help='总资金')
+    risk_parser.add_argument('--level', default='medium', help='风险等级 (low/medium/high)')
+    
+    # report-full - 完整分析报告
+    report_full_parser = subparsers.add_parser('report-full', help='完整分析报告')
+    report_full_parser.add_argument('symbol', help='股票代码')
+    report_full_parser.add_argument('--market', default='auto', help='市场类型')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -515,6 +547,29 @@ def main():
     
     elif args.command == 'quick':
         result = quick_analysis(args.symbol)
+    
+    # === 新增命令 ===
+    elif args.command == 'score':
+        # 综合评分
+        result = score_stock(args.symbol)
+    
+    elif args.command == 'framework':
+        # 三层分析框架
+        result = analyze_full(args.symbol)
+    
+    elif args.command == 'signals':
+        # 入场信号分析
+        result = analyze_entry_signals(args.symbol)
+    
+    elif args.command == 'risk':
+        # 风险管理分析
+        result = analyze_risk(args.symbol, args.capital, args.level)
+    
+    elif args.command == 'report-full':
+        # 完整分析报告
+        report = generate_score_report(args.symbol)
+        print(report)
+        return
     
     else:
         parser.print_help()
