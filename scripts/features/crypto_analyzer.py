@@ -259,7 +259,7 @@ class CryptoAnalyzer:
                 if volatility_ratio > 0.05:  # ATR > 5% 价格
                     result['volatility_warning'] = f"⚠️ 高波动率: {volatility_ratio*100:.1f}% (建议ATR止损倍数3-4)"
             
-            # 新增: 更多技术指标 (使用 CoinGecko OHLC)
+            # 新增: 更多技术指标 (使用 yfinance OHLCV)
             try:
                 import yfinance as yf
                 import pandas as pd
@@ -287,6 +287,11 @@ class CryptoAnalyzer:
                     result['indicators']['macd_histogram'] = round(float(histogram.iloc[-1]), 4)
                     result['indicators']['macd_trend'] = 'bullish' if float(histogram.iloc[-1]) > 0 else 'bearish'
                     
+                    # 同时更新 basic_indicators（用于表格显示）
+                    basic['macd'] = result['indicators']['macd']
+                    basic['macd_signal'] = result['indicators']['macd_signal']
+                    basic['macd_trend'] = result['indicators']['macd_trend']
+                    
                     # Bollinger Bands
                     bb_middle = closes.rolling(window=20).mean()
                     bb_std = closes.rolling(window=20).std()
@@ -306,6 +311,11 @@ class CryptoAnalyzer:
                     else:
                         result['indicators']['bb_position'] = 'middle'
                     
+                    # 同时更新 basic_indicators
+                    basic['bb_upper'] = result['indicators']['bb_upper']
+                    basic['bb_lower'] = result['indicators']['bb_lower']
+                    basic['bb_position'] = result['indicators']['bb_position']
+                    
                     # Volume Analysis
                     avg_volume_20 = float(volumes.rolling(window=20).mean().iloc[-1])
                     current_volume = float(volumes.iloc[-1])
@@ -313,6 +323,10 @@ class CryptoAnalyzer:
                     
                     result['indicators']['volume_ratio'] = round(volume_ratio, 2)
                     result['indicators']['volume_trend'] = 'high' if volume_ratio > 1.5 else 'low' if volume_ratio < 0.7 else 'normal'
+                    
+                    # 同时更新 basic_indicators
+                    basic['volume_ratio'] = result['indicators']['volume_ratio']
+                    basic['volume_trend'] = result['indicators']['volume_trend']
                     
                     # Stochastic
                     low_14 = lows.rolling(window=14).min()
@@ -322,6 +336,10 @@ class CryptoAnalyzer:
                     
                     result['indicators']['stoch_k'] = round(float(k.iloc[-1]), 2)
                     result['indicators']['stoch_d'] = round(float(d.iloc[-1]), 2)
+                    
+                    # 同时更新 basic_indicators
+                    basic['stoch_k'] = result['indicators']['stoch_k']
+                    basic['stoch_d'] = result['indicators']['stoch_d']
                     
                     # ADX (趋势强度)
                     high = highs
@@ -356,15 +374,33 @@ class CryptoAnalyzer:
                     else:
                         result['indicators']['trend_strength'] = 'moderate'
                     
+                    # 同时更新 basic_indicators
+                    basic['adx'] = result['indicators']['adx']
+                    basic['plus_di'] = result['indicators']['plus_di']
+                    basic['minus_di'] = result['indicators']['minus_di']
+                    basic['trend_strength'] = result['indicators']['trend_strength']
+                    
+                    # 更新 basic_indicators 的 trend 和 rsi
+                    basic['trend'] = result['indicators'].get('trend', basic.get('trend', 'unknown'))
+                    basic['rsi'] = result['indicators'].get('rsi', basic.get('rsi', 0))
+                    basic['ma5'] = result['indicators'].get('ma5', basic.get('ma5', 0))
+                    basic['ma10'] = result['indicators'].get('ma10', basic.get('ma10', 0))
+                    basic['ma20'] = result['indicators'].get('ma20', basic.get('ma20', 0))
+                    basic['current_price'] = current_price
+                    
                     result['data_source'] = 'yfinance + pandas'
+                    result['basic_indicators'] = basic  # 确保更新后的 basic 返回
                     
             except Exception as e:
                 print(f"⚠️ 扩展指标计算失败: {e}")
                 import traceback
                 traceback.print_exc()
             
-            # 新增: 生成专业文字解读
-            result['narrative'] = self._generate_technical_narrative(result['indicators'], symbol)
+            # 新增: 生成专业文字解读 (使用 basic_indicators 统一数据源)
+            result['narrative'] = self._generate_technical_narrative(basic, symbol)
+            
+            # 更新 basic_indicators 到 result
+            result['basic_indicators'] = basic
             
             return result
             
