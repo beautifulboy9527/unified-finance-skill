@@ -35,7 +35,34 @@ class LiquidityAnalyzer:
     def __init__(self, symbol: str):
         self.symbol = symbol
         self.market = detect_market(symbol)
+    
+    def _normalize_for_yfinance(self, symbol: str) -> str:
+        """
+        标准化股票代码为 yfinance 格式
+        A股需要添加 .SS 或 .SZ 后缀
+        """
+        import re
         
+        # 如果已经有后缀，直接返回
+        if '.' in symbol:
+            return symbol
+        
+        # A股: 6位数字
+        if re.match(r'^[0-9]{6}$', symbol):
+            if symbol.startswith('6'):
+                return f"{symbol}.SS"  # 上海
+            elif symbol.startswith(('0', '3')):
+                return f"{symbol}.SZ"  # 深圳
+            else:
+                return f"{symbol}.SS"  # 默认上海
+        
+        # 港股: 5位数字
+        if re.match(r'^[0-9]{5}$', symbol):
+            return f"{symbol}.HK"
+        
+        # 美股: 纯字母，无需转换
+        return symbol
+    
     def analyze(self, period: str = '3mo') -> Dict:
         """
         完整流动性分析 - Liquidity Dashboard
@@ -64,7 +91,10 @@ class LiquidityAnalyzer:
             import yfinance as yf
             import numpy as np
             
-            ticker = yf.Ticker(self.symbol)
+            # 标准化股票代码
+            yf_symbol = self._normalize_for_yfinance(self.symbol)
+            
+            ticker = yf.Ticker(yf_symbol)
             info = ticker.info
             hist = ticker.history(period=period)
             

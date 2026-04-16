@@ -38,6 +38,33 @@ class TechnicalChartGenerator:
     def __init__(self, symbol: str):
         self.symbol = symbol
         
+    def _normalize_for_yfinance(self, symbol: str) -> str:
+        """
+        标准化股票代码为 yfinance 格式
+        A股需要添加 .SS 或 .SZ 后缀
+        """
+        import re
+        
+        # 如果已经有后缀，直接返回
+        if '.' in symbol:
+            return symbol
+        
+        # A股: 6位数字
+        if re.match(r'^[0-9]{6}$', symbol):
+            if symbol.startswith('6'):
+                return f"{symbol}.SS"  # 上海
+            elif symbol.startswith(('0', '3')):
+                return f"{symbol}.SZ"  # 深圳
+            else:
+                return f"{symbol}.SS"  # 默认上海
+        
+        # 港股: 5位数字
+        if re.match(r'^[0-9]{5}$', symbol):
+            return f"{symbol}.HK"
+        
+        # 美股: 纯字母，无需转换
+        return symbol
+    
     def _has_data(self, s) -> bool:
         """检查数据是否有效"""
         try:
@@ -78,6 +105,7 @@ class TechnicalChartGenerator:
     
     def _calc_vwap(self, df):
         """计算 VWAP"""
+        import pandas as pd
         typical_price = (df['High'] + df['Low'] + df['Close']) / 3
         vol = df['Volume'].fillna(0)
         tpv = (typical_price * vol).cumsum()
@@ -142,8 +170,11 @@ class TechnicalChartGenerator:
             import matplotlib.pyplot as plt
             import matplotlib.dates as mdates
             
+            # 标准化股票代码 (A股需要加后缀)
+            yf_symbol = self._normalize_for_yfinance(self.symbol)
+            
             # 获取数据
-            ticker = yf.Ticker(self.symbol)
+            ticker = yf.Ticker(yf_symbol)
             hist = ticker.history(period=period)
             
             if hist.empty:

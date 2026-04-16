@@ -91,16 +91,45 @@ class ATRStopLoss:
     
     def _get_ohlcv(self, symbol: str):
         """获取K线数据"""
+        import traceback
+        
+        # 判断市场类型
+        is_us_stock = symbol.isalpha() and len(symbol) <= 5  # 美股: AAPL, MSFT
+        is_cn_stock = symbol.isdigit() or (symbol[:3].isdigit())  # A股: 002475, 600519
+        
+        # 尝试方法1: 主要数据源
         try:
-            if symbol.isalpha():
+            if is_us_stock:
                 import yfinance as yf
                 ticker = yf.Ticker(symbol)
-                return ticker.history(period="3mo")
-            else:
+                df = ticker.history(period="3mo")
+                if df is not None and not df.empty:
+                    return df
+            elif is_cn_stock:
                 import akshare as ak
-                return ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
-        except:
-            return None
+                # 标准化代码格式
+                code = symbol.zfill(6) if len(symbol) < 6 else symbol
+                df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
+                if df is not None and not df.empty:
+                    return df
+        except Exception as e:
+            pass  # 继续尝试备用方法
+        
+        # 尝试方法2: 使用 yfinance 作为 A股的备用
+        if is_cn_stock:
+            try:
+                import yfinance as yf
+                # yfinance A股格式: 002475.SZ
+                code = symbol.zfill(6)
+                suffix = '.SZ' if code.startswith(('0', '3')) else '.SS'
+                ticker = yf.Ticker(code + suffix)
+                df = ticker.history(period="3mo")
+                if df is not None and not df.empty:
+                    return df
+            except Exception as e:
+                pass
+        
+        return None
     
     def _calculate_atr(self, ohlcv, period: int = 14) -> float:
         """计算 ATR"""
@@ -147,6 +176,16 @@ class PositionSizer:
                 'stop_loss_distance': 5.38
             }
         """
+        # 参数验证
+        if entry_price is None or stop_loss is None:
+            return {
+                'error': '缺少必要参数: entry_price 或 stop_loss 为 None',
+                'suggestion': '请确保能获取到当前价格并计算止损价',
+                'capital': capital,
+                'shares': 0,
+                'position_value': 0
+            }
+        
         # 风险金额
         risk_amount = capital * risk_per_trade
         
@@ -344,6 +383,16 @@ class RiskManager:
         
         entry_price = stop_loss_result['current_price']
         stop_loss = stop_loss_result['stop_loss']
+        
+        # 检查价格是否有效
+        if entry_price is None or stop_loss is None:
+            return {
+                'symbol': symbol,
+                'error': '无法获取有效价格数据',
+                'stop_loss_result': stop_loss_result,
+                'suggestion': '请检查股票代码是否正确，或稍后重试',
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
         
         # 仓位计算
         position_result = self.position_sizer.calculate_by_risk_level(

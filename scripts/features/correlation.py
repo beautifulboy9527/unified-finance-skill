@@ -34,7 +34,34 @@ class CorrelationAnalyzer:
     
     def __init__(self, symbol: str = None):
         self.symbol = symbol
+    
+    def _normalize_for_yfinance(self, symbol: str) -> str:
+        """
+        标准化股票代码为 yfinance 格式
+        A股需要添加 .SS 或 .SZ 后缀
+        """
+        import re
         
+        # 如果已经有后缀，直接返回
+        if '.' in symbol:
+            return symbol
+        
+        # A股: 6位数字
+        if re.match(r'^[0-9]{6}$', symbol):
+            if symbol.startswith('6'):
+                return f"{symbol}.SS"  # 上海
+            elif symbol.startswith(('0', '3')):
+                return f"{symbol}.SZ"  # 深圳
+            else:
+                return f"{symbol}.SS"  # 默认上海
+        
+        # 港股: 5位数字
+        if re.match(r'^[0-9]{5}$', symbol):
+            return f"{symbol}.HK"
+        
+        # 美股: 纯字母，无需转换
+        return symbol
+    
     def discover_correlated(
         self,
         target_ticker: str,
@@ -67,8 +94,12 @@ class CorrelationAnalyzer:
             import pandas as pd
             import numpy as np
             
+            # 标准化股票代码
+            yf_target = self._normalize_for_yfinance(target_ticker)
+            yf_peers = [self._normalize_for_yfinance(t) for t in peer_tickers]
+            
             # 合并并去重
-            all_tickers = [target_ticker] + [t for t in peer_tickers if t != target_ticker]
+            all_tickers = [yf_target] + [t for t in yf_peers if t != yf_target]
             
             # 下载数据
             data = yf.download(all_tickers, period=period, auto_adjust=True, progress=False)
@@ -83,7 +114,8 @@ class CorrelationAnalyzer:
             else:
                 closes = data[['Close']].dropna()
             
-            if target_ticker not in closes.columns:
+            # 使用标准化后的代码进行检查
+            if yf_target not in closes.columns:
                 result['error'] = f'目标股票 {target_ticker} 无数据'
                 return result
             
@@ -95,7 +127,7 @@ class CorrelationAnalyzer:
                 return result
             
             # 计算相关性
-            corr_series = returns.corr()[target_ticker].drop(target_ticker, errors='ignore')
+            corr_series = returns.corr()[yf_target].drop(yf_target, errors='ignore')
             
             # 按绝对值排序
             ranked = corr_series.abs().sort_values(ascending=False)

@@ -54,54 +54,89 @@ class FinancialDataFetcher:
         
         try:
             import akshare as ak
+            import pandas as pd
             
             df = ak.stock_financial_abstract(symbol=self.symbol)
             
             if df is not None and len(df) > 0:
-                # 解析营收和利润
-                for _, row in df.head(10).iterrows():
-                    try:
-                        # 营收
-                        revenue_val = row.iloc[1] if len(row) > 1 else None
-                        if revenue_val:
-                            revenue = float(str(revenue_val).replace(',', '').replace('亿', ''))
-                            if revenue > 0:
-                                result['revenue_3y'].append(revenue)
-                        
-                        # 净利润
-                        profit_val = row.iloc[2] if len(row) > 2 else None
-                        if profit_val:
-                            profit = float(str(profit_val).replace(',', '').replace('亿', ''))
-                            result['net_profit_3y'].append(profit)
-                    except:
-                        continue
+                # 查找关键数据行
+                revenue_row = None
+                profit_row = None
+                roe_row = None
+                gross_margin_row = None
+                net_margin_row = None
+                debt_ratio_row = None
                 
-                # 提取指标
-                latest = df.iloc[0] if len(df) > 0 else None
-                if latest is not None:
-                    # 从列名推断
-                    for col in df.columns:
-                        col_str = str(col)
-                        if '毛利' in col_str:
-                            try:
-                                result['gross_margin'] = float(latest[col])
-                            except:
-                                pass
-                        elif '净利' in col_str and '率' in col_str:
-                            try:
-                                result['net_margin'] = float(latest[col])
-                            except:
-                                pass
-                        elif 'ROE' in col_str or '净资产收益' in col_str:
-                            try:
-                                result['roe'] = float(latest[col])
-                            except:
-                                pass
-                        elif '负债' in col_str:
-                            try:
-                                result['debt_ratio'] = float(latest[col])
-                            except:
-                                pass
+                # 遍历找到指标行 - 使用精确匹配
+                for idx, row in df.iterrows():
+                    indicator = str(row.get('指标', '')) if '指标' in df.columns else str(row.iloc[1]) if len(row) > 1 else ''
+                    
+                    # 精确匹配，避免子串误匹配
+                    if indicator == '营业总收入' or indicator == '营业收入':
+                        revenue_row = row
+                    elif indicator == '归母净利润' or indicator == '净利润':
+                        profit_row = row
+                    elif indicator == 'ROE' or indicator == '净资产收益率':
+                        roe_row = row
+                    elif indicator == '毛利率':
+                        gross_margin_row = row
+                    elif indicator == '净利率':
+                        net_margin_row = row
+                    elif indicator == '资产负债率':
+                        debt_ratio_row = row
+                
+                # 提取近3年数据
+                if revenue_row is not None:
+                    for col in df.columns[2:5]:  # 最近3年
+                        try:
+                            val = revenue_row[col]
+                            if pd.notna(val):
+                                revenue_yi = float(val) / 1e8
+                                result['revenue_3y'].append(round(revenue_yi, 2))
+                        except:
+                            pass
+                
+                if profit_row is not None:
+                    for col in df.columns[2:5]:  # 最近3年
+                        try:
+                            val = profit_row[col]
+                            if pd.notna(val):
+                                # 数据已经是实际值，转换为亿
+                                profit_yi = float(val) / 1e8
+                                result['net_profit_3y'].append(round(profit_yi, 2))
+                        except Exception as e:
+                            pass
+                
+                # 提取最新指标值
+                latest_col = df.columns[2] if len(df.columns) > 2 else None
+                if latest_col:
+                    if roe_row is not None:
+                        try:
+                            val = roe_row[latest_col]
+                            result['roe'] = round(float(val), 2) if pd.notna(val) else None
+                        except:
+                            pass
+                    
+                    if gross_margin_row is not None:
+                        try:
+                            val = gross_margin_row[latest_col]
+                            result['gross_margin'] = round(float(val), 2) if pd.notna(val) else None
+                        except:
+                            pass
+                    
+                    if net_margin_row is not None:
+                        try:
+                            val = net_margin_row[latest_col]
+                            result['net_margin'] = round(float(val), 2) if pd.notna(val) else None
+                        except:
+                            pass
+                    
+                    if debt_ratio_row is not None:
+                        try:
+                            val = debt_ratio_row[latest_col]
+                            result['debt_ratio'] = round(float(val), 2) if pd.notna(val) else None
+                        except:
+                            pass
                 
                 result['data_source'] = 'akshare'
                 result['update_time'] = datetime.now().strftime('%Y-%m-%d')
@@ -164,12 +199,16 @@ class FinancialDataFetcher:
         """
         获取资金流向 (仅A股)
         """
+        from datetime import datetime, timedelta
+        
         result = {
             'symbol': self.symbol,
             'history': [],
             'summary': {},
             'data_source': 'none',
             'update_time': None,
+            'data_freshness': None,
+            'warning': None,
             'error': None
         }
         
@@ -197,6 +236,24 @@ class FinancialDataFetcher:
                         'retail_net_inflow': round(float(values[9]) / 1e8 + float(values[11]) / 1e8, 4) if len(values) > 11 else None,
                     }
                     history.append(entry)
+                
+                # 检查数据时效性
+                if history:
+                    latest_date_str = history[0].get('date', '')
+                    try:
+                        latest_date = datetime.strptime(latest_date_str, '%Y-%m-%d')
+                        days_old = (datetime.now() - latest_date).days
+                        
+                        if days_old > 7:
+                            result['warning'] = f'⚠️ 数据已过时 {days_old} 天 (最新: {latest_date_str})'
+                            result['data_freshness'] = 'stale'
+                        elif days_old > 3:
+                            result['warning'] = f'数据延迟 {days_old} 天'
+                            result['data_freshness'] = 'delayed'
+                        else:
+                            result['data_freshness'] = 'fresh'
+                    except:
+                        result['data_freshness'] = 'unknown'
                 
                 # 计算汇总
                 total_main = sum(h['main_net_inflow'] or 0 for h in history)

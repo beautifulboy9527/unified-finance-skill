@@ -81,28 +81,59 @@ class MetalsAnalyzer:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).seconds < self.cache_ttl:
             return self.cache[cache_key]
         
-        try:
-            import requests
-            
-            # 尝试 metals.live API (免费)
-            url = f"https://api.metals.live/v1/spot/{metal.lower()}"
-            headers = {'Accept': 'application/json'}
-            
-            response = requests.get(url, headers=headers, timeout=15)
-            
-            if response.status_code == 200:
-                data = response.json()
+        # 方法1: 使用 akshare 上海黄金交易所数据 (仅黄金)
+        if metal == 'XAU':
+            try:
+                import akshare as ak
+                import pandas as pd
                 
-                if isinstance(data, list) and len(data) > 0:
-                    item = data[0]
-                    result['price'] = item.get('price')
-                    result['data_source'] = 'metals.live'
-                elif isinstance(data, dict):
-                    result['price'] = data.get('price')
-                    result['data_source'] = 'metals.live'
-            
-        except Exception as e:
-            result['error'] = str(e)
+                df = ak.spot_golden_benchmark_sge()
+                if df is not None and len(df) > 0:
+                    # 获取最新价格 (人民币/克)
+                    latest = df.iloc[-1]
+                    price_cny_per_gram = float(latest['晚盘价'] if '晚盘价' in latest else latest.iloc[1])
+                    
+                    # 转换为美元/盎司
+                    # 1盎司 = 31.1035克
+                    # 假设汇率约 7.2
+                    exchange_rate = self._get_usd_cny_rate()
+                    price_usd_per_ounce = (price_cny_per_gram * 31.1035) / exchange_rate
+                    
+                    result['price'] = round(price_usd_per_ounce, 2)
+                    result['data_source'] = 'akshare_sge'
+                    result['price_cny_per_gram'] = round(price_cny_per_gram, 2)
+                    
+                    # 计算涨跌
+                    if len(df) > 1:
+                        prev = df.iloc[-2]
+                        prev_price = float(prev['晚盘价'] if '晚盘价' in prev else prev.iloc[1])
+                        change = (price_cny_per_gram - prev_price) / prev_price
+                        result['change_pct_24h'] = round(change * 100, 2)
+            except Exception as e:
+                pass
+        
+        # 方法2: 尝试 metals.live API
+        if result['price'] is None:
+            try:
+                import requests
+                
+                url = f"https://api.metals.live/v1/spot/{metal.lower()}"
+                headers = {'Accept': 'application/json'}
+                
+                response = requests.get(url, headers=headers, timeout=15)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    if isinstance(data, list) and len(data) > 0:
+                        item = data[0]
+                        result['price'] = item.get('price')
+                        result['data_source'] = 'metals.live'
+                    elif isinstance(data, dict):
+                        result['price'] = data.get('price')
+                        result['data_source'] = 'metals.live'
+            except Exception as e:
+                pass
         
         # 备用数据源: 金价API
         if result['price'] is None:
@@ -148,10 +179,25 @@ class MetalsAnalyzer:
         fallback_prices = {
             'XAU': 2350.0,  # 黄金约 $2350/盎司
             'XAG': 28.0,    # 白银约 $28/盎司
-            'XPT': 980.0,   # 铂金约 $980/盎司
-            'XPD': 980.0    # 钯金约 $980/盎司
+            'XPT': 1000.0,  # 铂金约 $1000/盎司
+            'XPD': 1100.0   # 钯金约 $1100/盎司
         }
         return fallback_prices.get(metal, 1000.0)
+    
+    def _get_usd_cny_rate(self) -> float:
+        """获取美元人民币汇率"""
+        try:
+            import akshare as ak
+            df = ak.currency_boc_safe()
+            if df is not None and len(df) > 0:
+                for _, row in df.iterrows():
+                    if '美元' in str(row.get('货币名称', '')):
+                        return float(row['中行折算价'])
+        except:
+            pass
+        
+        # 默认汇率
+        return 7.2
     
     def get_all_prices(self) -> Dict:
         """
