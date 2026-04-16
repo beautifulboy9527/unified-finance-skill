@@ -226,17 +226,27 @@ class CryptoAnalyzer:
     
     def _analyze_technical_crypto(self, symbol: str) -> Dict:
         """
-        加密货币技术分析 (适配高波动)
+        加密货币技术分析 (适配高波动 + 多指标)
         """
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         
         try:
             from core.technical import analyze_technical
+            import yfinance as yf
+            import pandas as pd
+            import numpy as np
             
             result = analyze_technical(symbol)
             
+            # 确保 indicators 字典存在
+            if 'indicators' not in result:
+                result['indicators'] = {}
+            
             # 加密货币特有的风险评估
             basic = result.get('basic_indicators', {})
+            
+            # 将 basic_indicators 合并到 indicators
+            result['indicators'].update(basic)
             
             # ATR倍数调整 (加密货币波动更大)
             atr = basic.get('atr', 0)
@@ -249,8 +259,88 @@ class CryptoAnalyzer:
                 if volatility_ratio > 0.05:  # ATR > 5% 价格
                     result['volatility_warning'] = f"⚠️ 高波动率: {volatility_ratio*100:.1f}% (建议ATR止损倍数3-4)"
             
+            # 新增: 更多技术指标
+            try:
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period='6mo')
+                
+                if not hist.empty and len(hist) >= 30:
+                    # MACD
+                    exp1 = hist['Close'].ewm(span=12, adjust=False).mean()
+                    exp2 = hist['Close'].ewm(span=26, adjust=False).mean()
+                    macd = exp1 - exp2
+                    signal = macd.ewm(span=9, adjust=False).mean()
+                    histogram = macd - signal
+                    
+                    result['indicators']['macd'] = round(macd.iloc[-1], 4)
+                    result['indicators']['macd_signal'] = round(signal.iloc[-1], 4)
+                    result['indicators']['macd_histogram'] = round(histogram.iloc[-1], 4)
+                    result['indicators']['macd_trend'] = 'bullish' if histogram.iloc[-1] > 0 else 'bearish'
+                    
+                    # Bollinger Bands
+                    bb_middle = hist['Close'].rolling(window=20).mean()
+                    bb_std = hist['Close'].rolling(window=20).std()
+                    bb_upper = bb_middle + (bb_std * 2)
+                    bb_lower = bb_middle - (bb_std * 2)
+                    
+                    result['indicators']['bb_upper'] = round(bb_upper.iloc[-1], 2)
+                    result['indicators']['bb_middle'] = round(bb_middle.iloc[-1], 2)
+                    result['indicators']['bb_lower'] = round(bb_lower.iloc[-1], 2)
+                    result['indicators']['bb_position'] = (
+                        'above_upper' if current_price > bb_upper.iloc[-1] else
+                        'below_lower' if current_price < bb_lower.iloc[-1] else
+                        'middle'
+                    )
+                    
+                    # Volume Analysis
+                    avg_volume_20 = hist['Volume'].rolling(window=20).mean().iloc[-1]
+                    current_volume = hist['Volume'].iloc[-1]
+                    volume_ratio = current_volume / avg_volume_20 if avg_volume_20 > 0 else 1
+                    
+                    result['indicators']['volume_ratio'] = round(volume_ratio, 2)
+                    result['indicators']['volume_trend'] = 'high' if volume_ratio > 1.5 else 'low' if volume_ratio < 0.7 else 'normal'
+                    
+                    # Stochastic
+                    low_14 = hist['Low'].rolling(window=14).min()
+                    high_14 = hist['High'].rolling(window=14).max()
+                    k = 100 * (hist['Close'] - low_14) / (high_14 - low_14)
+                    d = k.rolling(window=3).mean()
+                    
+                    result['indicators']['stoch_k'] = round(k.iloc[-1], 2)
+                    result['indicators']['stoch_d'] = round(d.iloc[-1], 2)
+                    
+                    # ADX (趋势强度)
+                    high = hist['High']
+                    low = hist['Low']
+                    close = hist['Close']
+                    
+                    plus_dm = high.diff()
+                    minus_dm = low.diff()
+                    plus_dm[plus_dm < 0] = 0
+                    minus_dm[minus_dm > 0] = 0
+                    
+                    tr = pd.concat([high - low, abs(high - close.shift()), abs(low - close.shift())], axis=1).max(axis=1)
+                    atr_14 = tr.rolling(window=14).mean()
+                    
+                    plus_di = 100 * (plus_dm.rolling(window=14).mean() / atr_14)
+                    minus_di = 100 * (abs(minus_dm).rolling(window=14).mean() / atr_14)
+                    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
+                    adx = dx.rolling(window=14).mean()
+                    
+                    result['indicators']['adx'] = round(adx.iloc[-1], 2)
+                    result['indicators']['trend_strength'] = (
+                        'strong' if adx.iloc[-1] > 25 else
+                        'weak' if adx.iloc[-1] < 20 else
+                        'moderate'
+                    )
+                    
+                    result['data_source'] = 'yfinance + pandas'
+                    
+            except Exception as e:
+                print(f"⚠️ 扩展指标计算失败: {e}")
+            
             # 新增: 生成专业文字解读
-            result['narrative'] = self._generate_technical_narrative(basic, symbol)
+            result['narrative'] = self._generate_technical_narrative(result['indicators'], symbol)
             
             return result
             
@@ -259,7 +349,7 @@ class CryptoAnalyzer:
     
     def _generate_technical_narrative(self, indicators: Dict, symbol: str) -> str:
         """
-        生成技术面专业文字解读
+        生成技术面专业文字解读 (多指标共振分析)
         
         Args:
             indicators: 技术指标字典
@@ -278,87 +368,129 @@ class CryptoAnalyzer:
         ma10 = indicators.get('ma10', 0)
         ma20 = indicators.get('ma20', 0)
         
+        # 新增指标
+        macd_trend = indicators.get('macd_trend')
+        bb_position = indicators.get('bb_position')
+        volume_ratio = indicators.get('volume_ratio', 1)
+        stoch_k = indicators.get('stoch_k', 50)
+        adx = indicators.get('adx', 0)
+        trend_strength = indicators.get('trend_strength', 'unknown')
+        
         # 构建解读
         paragraphs = []
         
-        # 1. 趋势分析
+        # 1. 趋势分析 (增强)
         if trend == 'uptrend':
-            paragraphs.append(
+            trend_desc = (
                 f"{symbol} 当前处于上升趋势，价格({current_price:.2f})站上MA5({ma5:.2f})、MA10({ma10:.2f})、MA20({ma20:.2f})三条均线，"
-                f"形成多头排列，短期动能偏强。"
+                f"形成多头排列。"
             )
+            if adx:
+                trend_desc += f" ADX为{adx:.1f}，趋势{'强度充足' if adx > 25 else '强度一般'}。"
+            paragraphs.append(trend_desc)
         elif trend == 'downtrend':
             paragraphs.append(
                 f"{symbol} 当前处于下降趋势，价格({current_price:.2f})低于MA5、MA10、MA20均线，"
-                f"空头排列明显，短期建议观望为主。"
+                f"空头排列明显。ADX为{adx:.1f}，趋势强度{'较强' if adx > 25 else '较弱'}。"
             )
         else:
             paragraphs.append(
                 f"{symbol} 当前处于震荡整理阶段，价格({current_price:.2f})在均线间反复，"
-                f"方向不明确，建议等待突破信号。"
+                f"方向不明确。ADX为{adx:.1f}，趋势强度较弱。"
             )
         
-        # 2. RSI 分析
+        # 2. RSI + Stochastic 共振分析
+        momentum_parts = []
         if rsi:
             if rsi > 70:
-                paragraphs.append(
-                    f"RSI达到{rsi:.2f}，已进入超买区间(>70)，短期存在回调风险。"
-                    f"若出现顶背离或成交量萎缩，需警惕高位回落。"
-                )
+                momentum_parts.append(f"RSI达{rsi:.1f}超买区")
             elif rsi > 60:
-                paragraphs.append(
-                    f"RSI为{rsi:.2f}，接近超买区域(60-70)，多头力量较强但仍需警惕。"
-                    f"若继续上行突破70，可能进入加速上涨阶段。"
-                )
+                momentum_parts.append(f"RSI为{rsi:.1f}偏强")
             elif rsi < 30:
+                momentum_parts.append(f"RSI仅{rsi:.1f}超卖区")
+            else:
+                momentum_parts.append(f"RSI为{rsi:.1f}中性")
+        
+        if stoch_k:
+            if stoch_k > 80:
+                momentum_parts.append(f"Stochastic %K达{stoch_k:.1f}超买")
+            elif stoch_k < 20:
+                momentum_parts.append(f"Stochastic %K仅{stoch_k:.1f}超卖")
+        
+        if momentum_parts:
+            momentum_text = "，".join(momentum_parts) + "。"
+            paragraphs.append(momentum_text)
+        
+        # 3. MACD 分析
+        if macd_trend:
+            macd_text = (
+                f"MACD {'多头排列' if macd_trend == 'bullish' else '空头排列'}，"
+                f"{'柱状图为正，动能向上' if macd_trend == 'bullish' else '柱状图为负，动能向下'}。"
+            )
+            paragraphs.append(macd_text)
+        
+        # 4. Bollinger Bands 分析
+        if bb_position:
+            if bb_position == 'above_upper':
                 paragraphs.append(
-                    f"RSI仅为{rsi:.2f}，已进入超卖区间(<30)，可能是短期抄底机会。"
-                    f"若出现底背离，反弹概率较大。"
+                    f"价格突破布林带上轨，波动率放大，短期可能进入加速上涨或面临回调。"
                 )
-            elif rsi < 40:
+            elif bb_position == 'below_lower':
                 paragraphs.append(
-                    f"RSI为{rsi:.2f}，处于弱势区域(30-40)，空头占优。"
-                    f"需等待RSI回升至50以上再考虑入场。"
+                    f"价格跌破布林带下轨，超卖迹象明显，可能存在反弹机会。"
                 )
             else:
+                bb_upper = indicators.get('bb_upper', 0)
+                bb_lower = indicators.get('bb_lower', 0)
                 paragraphs.append(
-                    f"RSI为{rsi:.2f}，处于中性区域(40-60)，多空力量相对平衡。"
+                    f"价格在布林带区间内运行，上轨{bb_upper:.2f}为阻力，下轨{bb_lower:.2f}为支撑。"
                 )
         
-        # 3. 均线支撑/阻力
-        if ma5 and ma10 and ma20:
-            if current_price > ma20:
+        # 5. 成交量分析
+        if volume_ratio:
+            if volume_ratio > 1.5:
+                vol_text = f"成交量放大{volume_ratio:.1f}倍，市场活跃度提升。"
+                if trend == 'uptrend':
+                    vol_text += "趋势确认有效。"
+                else:
+                    vol_text += "需警惕量价背离。"
+                paragraphs.append(vol_text)
+            elif volume_ratio < 0.7:
                 paragraphs.append(
-                    f"MA20({ma20:.2f})为重要支撑位，若回踩不破可考虑低吸。"
-                    f"短期阻力位关注前高，突破后有望打开上行空间。"
-                )
-            else:
-                paragraphs.append(
-                    f"MA20({ma20:.2f})为上方阻力位，突破该位置才能确认趋势转强。"
-                    f"下方支撑关注近期低点，若跌破可能加速下跌。"
+                    f"成交量萎缩至{volume_ratio:.1f}倍均值，市场观望情绪浓厚。"
                 )
         
-        # 4. 综合操作建议
-        if trend == 'uptrend' and rsi and rsi < 70:
+        # 6. 综合操作建议 (多因素共振)
+        bullish_signals = 0
+        bearish_signals = 0
+        
+        if trend == 'uptrend': bullish_signals += 1
+        elif trend == 'downtrend': bearish_signals += 1
+        
+        if macd_trend == 'bullish': bullish_signals += 1
+        elif macd_trend == 'bearish': bearish_signals += 1
+        
+        if rsi and 40 < rsi < 70: bullish_signals += 1
+        elif rsi and rsi > 70: bearish_signals += 1
+        
+        if volume_ratio and volume_ratio > 1.2: bullish_signals += 1
+        elif volume_ratio and volume_ratio < 0.8: bearish_signals += 1
+        
+        if bullish_signals > bearish_signals + 1:
             conclusion = (
-                f"综合来看，{symbol}短期偏多，技术面支撑上涨。"
-                f"建议在MA20附近设置止损，目标可看前高附近。"
-                f"严格执行止损纪律，仓位控制在总资金的10-20%。"
+                f"综合来看，{symbol}技术面偏多({bullish_signals}项看多信号 vs {bearish_signals}项看空信号)。"
+                f"建议在MA20({ma20:.2f})附近设置止损，目标看前高附近。"
+                f"严格执行止损纪律，仓位控制在10-20%。"
             )
-        elif trend == 'uptrend' and rsi and rsi > 70:
+        elif bearish_signals > bullish_signals + 1:
             conclusion = (
-                f"虽然趋势向上，但RSI超买提示短期风险。"
-                f"建议等待回调至MA5或MA10支撑位再考虑入场，避免追高。"
-            )
-        elif trend == 'downtrend':
-            conclusion = (
-                f"当前趋势偏空，建议观望为主。"
-                f"等待RSI进入超卖区或出现企稳信号后再考虑布局。"
+                f"综合来看，{symbol}技术面偏空({bearish_signals}项看空信号 vs {bullish_signals}项看多信号)。"
+                f"建议观望为主，等待技术面修复后再考虑入场。"
             )
         else:
             conclusion = (
-                f"技术面信号不明确，建议等待突破方向确认后再操作。"
-                f"关注MA20得失，突破后顺势而为。"
+                f"综合来看，{symbol}技术面信号混杂({bullish_signals}多 vs {bearish_signals}空)，"
+                f"建议等待更明确的趋势信号再操作。关注MA20得失和成交量变化。"
             )
         
         paragraphs.append(conclusion)

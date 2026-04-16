@@ -706,16 +706,20 @@ class ReportGenerator:
         
         <table>
             <tr><th>指标</th><th>数值</th><th>状态</th></tr>
+            <tr><td>当前价格</td><td><strong>${basic.get('current_price', 'N/A')}</strong></td><td>实时</td></tr>
             <tr><td>趋势</td><td>{basic.get('trend', 'N/A')}</td><td>{'📈 多头' if basic.get('trend') == 'uptrend' else '📉 空头' if basic.get('trend') == 'downtrend' else '➡️ 震荡'}</td></tr>
             <tr><td>RSI</td><td>{basic.get('rsi', 'N/A')}</td><td>{'⚠️ 超买' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] > 70 else '⚠️ 超卖' if isinstance(basic.get('rsi'), (int, float)) and basic['rsi'] < 30 else '✅ 正常'}</td></tr>
             <tr><td>MA5</td><td>${basic.get('ma5', 'N/A')}</td><td>短期均线</td></tr>
             <tr><td>MA10</td><td>${basic.get('ma10', 'N/A')}</td><td>中期均线</td></tr>
             <tr><td>MA20</td><td>${basic.get('ma20', 'N/A')}</td><td>长期均线</td></tr>
-            <tr><td>ATR</td><td>${basic.get('atr', 'N/A')}</td><td>波动率</td></tr>
-            <tr><td>AI建议</td><td>{ai_decision.get('recommendation', 'N/A')}</td><td>置信度 {ai_decision.get('confidence', 0)}%</td></tr>
+            <tr><td>MACD</td><td>{basic.get('macd', 'N/A')}</td><td>{'📈 多头' if basic.get('macd_trend') == 'bullish' else '📉 空头' if basic.get('macd_trend') == 'bearish' else '-'}</td></tr>
+            <tr><td>Bollinger</td><td>{basic.get('bb_position', 'N/A')}</td><td>{'⚠️ 突破上轨' if basic.get('bb_position') == 'above_upper' else '⚠️ 跌破下轨' if basic.get('bb_position') == 'below_lower' else '区间内'}</td></tr>
+            <tr><td>成交量</td><td>{basic.get('volume_ratio', 'N/A')}x</td><td>{'放量' if isinstance(basic.get('volume_ratio'), (int, float)) and basic['volume_ratio'] > 1.2 else '缩量' if isinstance(basic.get('volume_ratio'), (int, float)) and basic['volume_ratio'] < 0.8 else '正常'}</td></tr>
+            <tr><td>ADX</td><td>{basic.get('adx', 'N/A')}</td><td>{basic.get('trend_strength', 'N/A')}</td></tr>
+            <tr><td>Stochastic %K</td><td>{basic.get('stoch_k', 'N/A')}</td><td>{'⚠️ 超买' if isinstance(basic.get('stoch_k'), (int, float)) and basic['stoch_k'] > 80 else '⚠️ 超卖' if isinstance(basic.get('stoch_k'), (int, float)) and basic['stoch_k'] < 20 else '正常'}</td></tr>
         </table>
         
-        <h3>📝 技术面专业解读</h3>
+        <h3>📝 技术面专业解读 (多指标共振分析)</h3>
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0;">
             {tech.get('narrative', '暂无解读').replace(chr(10), '<br><br>')}
         </div>
