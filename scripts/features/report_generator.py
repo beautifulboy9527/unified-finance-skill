@@ -610,9 +610,26 @@ class ReportGenerator:
         signals = crypto_result['signals']
         signal_score = signals.get('score', {}).get('overall_score', 0)
         
+        # 链上数据
+        onchain = crypto_result['onchain']
+        
         # 风险警告
         risk_warning = config.get('risk_warning', '')
         volatility_warning = tech.get('volatility_warning', '')
+        
+        # 数据来源列表
+        data_sources = []
+        if onchain.get('data_source'):
+            data_sources.append(onchain['data_source'])
+        if sentiment.get('data_source'):
+            data_sources.append(sentiment['data_source'])
+        
+        # 价格数据
+        current_price = onchain.get('current_price_usd', 'N/A')
+        price_change_24h = onchain.get('price_change_24h', 'N/A')
+        volume_24h = onchain.get('volume_24h', 'N/A')
+        market_cap = onchain.get('market_cap', 'N/A')
+        market_cap_rank = onchain.get('market_cap_rank', 'N/A')
         
         html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -630,6 +647,7 @@ class ReportGenerator:
         .decision {{ background: #e8f4f8; padding: 25px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #00bcd4; }}
         .decision-action {{ font-size: 28px; font-weight: bold; color: #00bcd4; }}
         .warning-box {{ background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0; }}
+        .data-source {{ background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 13px; }}
         .chart-container {{ text-align: center; margin: 30px 0; }}
         table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
         th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
@@ -644,10 +662,20 @@ class ReportGenerator:
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <strong>分析时间:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}<br>
             <strong>资产类型:</strong> 加密货币<br>
-            <strong>报告版本:</strong> v3.2 (多资产适配版)
+            <strong>报告版本:</strong> v3.2 (多资产适配版 - 真实数据)
         </div>
         
-        <h2>📊 一、综合评分</h2>
+        <h2>📊 一、市场数据 (实时)</h2>
+        
+        <table>
+            <tr><th>指标</th><th>数值</th><th>说明</th></tr>
+            <tr><td>当前价格</td><td><strong>${current_price:,.2f}</strong></td><td>实时价格</td></tr>
+            <tr><td>24h 涨跌</td><td>{price_change_24h:+.2f}%</td><td>{'📈 上涨' if price_change_24h and price_change_24h > 0 else '📉 下跌' if price_change_24h else '-'}</td></tr>
+            <tr><td>24h 成交量</td><td>${volume_24h/1e9:.2f}B</td><td>市场活跃度</td></tr>
+            <tr><td>市值</td><td>${market_cap/1e9:.2f}B</td><td>市场排名第 {market_cap_rank}</td></tr>
+        </table>
+        
+        <h2>📊 二、综合评分</h2>
         
         <div class="score-card">
             <div class="score-value">{crypto_result['score']}/100</div>
@@ -658,23 +686,23 @@ class ReportGenerator:
             {radar_img}
         </div>
         
-        <h2>🎯 二、投资决策</h2>
+        <h2>🎯 三、投资决策</h2>
         
         <div class="decision">
             <div class="decision-action">{crypto_result['recommendation'].upper()}</div>
             <div style="margin-top: 10px;">建议操作 | 评分 {crypto_result['score']}/100</div>
         </div>
         
-        <h2>📈 三、市场情绪</h2>
+        <h2>📈 四、市场情绪</h2>
         
         <table>
             <tr><th>指标</th><th>数值</th><th>解读</th></tr>
-            <tr><td>恐慌贪婪指数</td><td>{fear_greed}</td><td>{sentiment_class}</td></tr>
+            <tr><td>恐慌贪婪指数</td><td><strong>{fear_greed}</strong></td><td>{sentiment_class}</td></tr>
             <tr><td>情绪评分</td><td>{sentiment.get('sentiment_score', 'N/A')}</td><td>{'极度恐惧时往往是买入机会' if isinstance(fear_greed, int) and fear_greed < 25 else '极度贪婪时需注意风险' if isinstance(fear_greed, int) and fear_greed > 75 else '中性'}</td></tr>
-            <tr><td>数据来源</td><td>{sentiment.get('data_source', 'N/A')}</td><td>-</td></tr>
+            <tr><td>数据来源</td><td colspan="2"><a href="{sentiment.get('source_url', '#')}" target="_blank">{sentiment.get('data_source', 'N/A')}</a></td></tr>
         </table>
         
-        <h2>📉 四、技术分析</h2>
+        <h2>📉 五、技术分析</h2>
         
         <table>
             <tr><th>指标</th><th>数值</th><th>状态</th></tr>
@@ -683,7 +711,7 @@ class ReportGenerator:
             <tr><td>AI建议</td><td>{ai_decision.get('recommendation', 'N/A')}</td><td>置信度 {ai_decision.get('confidence', 0)}%</td></tr>
         </table>
         
-        <h2>⚠️ 五、风险提示</h2>
+        <h2>⚠️ 六、风险提示</h2>
         
         <div class="warning-box">
             <strong>⚠️ 加密货币风险警告：</strong><br>
@@ -691,7 +719,18 @@ class ReportGenerator:
             {volatility_warning}
         </div>
         
-        <h2>📝 六、重要声明</h2>
+        <h2>📋 七、数据来源</h2>
+        
+        <div class="data-source">
+            <strong>本报告使用以下真实数据源：</strong><br>
+            • 市场数据: <a href="{onchain.get('source_url', '#')}" target="_blank">{onchain.get('data_source', 'N/A')}</a><br>
+            • 情绪指数: <a href="{sentiment.get('source_url', '#')}" target="_blank">{sentiment.get('data_source', 'N/A')}</a><br>
+            • 技术分析: yfinance (Yahoo Finance)<br>
+            <br>
+            <em>所有数据均来自公开免费API，可验证、可追溯。</em>
+        </div>
+        
+        <h2>📝 八、重要声明</h2>
         
         <p>本报告仅供加密货币投资参考，不构成投资建议。</p>
         <p><strong>加密货币风险极高：</strong></p>
@@ -704,7 +743,7 @@ class ReportGenerator:
         <p>建议：小仓位 + 严格止损 + 长期持有优质资产</p>
         
         <div class="footer">
-            <p>Neo9527 Unified Finance Skill v3.2 | 多资产适配版</p>
+            <p>Neo9527 Unified Finance Skill v3.2 | 多资产适配版 (真实数据)</p>
             <p>生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
     </div>

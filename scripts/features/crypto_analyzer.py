@@ -69,61 +69,136 @@ class CryptoAnalyzer:
     
     def _analyze_onchain(self, symbol: str) -> Dict:
         """
-        链上数据分析
+        链上数据分析 - 使用 CoinGecko API
         
         Returns:
             链上指标
         """
-        # 实际应用中可接入:
-        # - Glassnode API
-        # - CoinMetrics
-        # - Dune Analytics
+        # CoinGecko API 获取市场数据
+        try:
+            import requests
+            
+            # 转换 symbol 格式: ETH-USD → ethereum
+            coin_id = self._symbol_to_coingecko_id(symbol)
+            
+            # CoinGecko API (免费)
+            url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+            params = {
+                'localization': 'false',
+                'tickers': 'false',
+                'market_data': 'true',
+                'community_data': 'false',
+                'developer_data': 'false'
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                market_data = data.get('market_data', {})
+                
+                return {
+                    'current_price_usd': market_data.get('current_price', {}).get('usd'),
+                    'price_change_24h': market_data.get('price_change_percentage_24h'),
+                    'price_change_7d': market_data.get('price_change_percentage_7d'),
+                    'volume_24h': market_data.get('total_volume', {}).get('usd'),
+                    'market_cap': market_data.get('market_cap', {}).get('usd'),
+                    'market_cap_rank': data.get('market_cap_rank'),
+                    'total_supply': market_data.get('total_supply'),
+                    'circulating_supply': market_data.get('circulating_supply'),
+                    'high_24h': market_data.get('high_24h', {}).get('usd'),
+                    'low_24h': market_data.get('low_24h', {}).get('usd'),
+                    'ath': market_data.get('ath', {}).get('usd'),
+                    'ath_change_percentage': market_data.get('ath_change_percentage', {}).get('usd'),
+                    'data_source': 'CoinGecko API',
+                    'source_url': f'https://www.coingecko.com/en/coins/{coin_id}',
+                    'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+        except Exception as e:
+            print(f"⚠️ CoinGecko 数据获取失败: {e}")
         
         return {
             'active_addresses_24h': 'N/A',
             'transaction_volume': 'N/A',
-            'whale_activity': 'N/A',
-            'exchange_inflow': 'N/A',
-            'exchange_outflow': 'N/A',
-            'data_source': 'onchain_api (需配置)',
-            'note': '链上数据需要配置 Glassnode/CoinMetrics API'
+            'data_source': 'fallback',
+            'note': '链上数据获取失败，请检查网络连接'
         }
+    
+    def _symbol_to_coingecko_id(self, symbol: str) -> str:
+        """
+        将交易对转换为 CoinGecko ID
+        
+        Args:
+            symbol: 如 ETH-USD, BTC-USD
+            
+        Returns:
+            CoinGecko coin id: 如 ethereum, bitcoin
+        """
+        # 常见映射
+        mapping = {
+            'BTC': 'bitcoin',
+            'ETH': 'ethereum',
+            'BNB': 'binancecoin',
+            'XRP': 'ripple',
+            'ADA': 'cardano',
+            'DOGE': 'dogecoin',
+            'SOL': 'solana',
+            'DOT': 'polkadot',
+            'MATIC': 'matic-network',
+            'LTC': 'litecoin',
+            'SHIB': 'shiba-inu',
+            'AVAX': 'avalanche-2',
+            'LINK': 'chainlink',
+            'ATOM': 'cosmos',
+            'UNI': 'uniswap',
+            'XMR': 'monero',
+            'ETC': 'ethereum-classic',
+            'XLM': 'stellar',
+            'BCH': 'bitcoin-cash',
+            'ALGO': 'algorand',
+            'AAVE': 'aave',
+            'COMP': 'compound-governance-token',
+            'MKR': 'maker',
+        }
+        
+        # 提取基础货币
+        base = symbol.upper().split('-')[0].replace('USDT', '').replace('USDC', '')
+        
+        return mapping.get(base, base.lower())
     
     def _analyze_sentiment(self, symbol: str) -> Dict:
         """
-        市场情绪分析
+        市场情绪分析 - 使用 alternative.me API
         
         Returns:
             情绪指标
         """
-        # 实际应用中可接入:
-        # - Alternative.me Fear & Greed Index
-        # - LunarCrush
-        # - Santiment
-        
         try:
-            # 尝试获取恐慌贪婪指数
+            # 使用 Alternative.me Fear & Greed Index API (免费)
             import requests
             
             response = requests.get(
                 'https://api.alternative.me/fng/',
-                timeout=5
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()['data'][0]
                 fear_greed_value = int(data['value'])
                 fear_greed_class = data['value_classification']
+                timestamp = int(data['timestamp'])
                 
                 return {
                     'fear_greed_index': fear_greed_value,
                     'fear_greed_class': fear_greed_class,
                     'sentiment_score': self._map_sentiment_to_score(fear_greed_value),
-                    'data_source': 'alternative.me',
-                    'update_time': datetime.fromtimestamp(int(data['timestamp'])).strftime('%Y-%m-%d')
+                    'data_source': 'alternative.me API',
+                    'source_url': 'https://alternative.me/crypto/fear-and-greed-index/',
+                    'update_time': datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d'),
+                    'description': f"恐慌贪婪指数: {fear_greed_value} ({fear_greed_class})"
                 }
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ 情绪数据获取失败: {e}")
         
         return {
             'fear_greed_index': 'N/A',
