@@ -40,6 +40,9 @@ setup(
         "requests>=2.28.0",
         "matplotlib>=3.6.0",
         "mplfinance>=0.12.0",
+        "fastapi>=0.100.0",
+        "uvicorn>=0.23.0",
+        "pydantic>=2.0.0",
     ],
     extras_require={
         "dev": [
