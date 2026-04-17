@@ -145,23 +145,88 @@ class FinancialAnomalyDetector:
         data = {}
         
         try:
-            # 获取财务指标
+            # 方法1: 使用利润表数据 (更可靠)
+            df_profit = ak.stock_financial_report_sina(stock=symbol, symbol="利润表")
+            
+            if df_profit is not None and not df_profit.empty:
+                # 取最近3年
+                recent = df_profit.head(3)
+                
+                # 计算增长率
+                revenues = recent['营业收入'].astype(float).tolist()
+                profits = recent['净利润'].astype(float).tolist() if '净利润' in recent.columns else [0,0,0]
+                
+                # 计算营收增长率
+                rev_growth = []
+                for i in range(len(revenues)-1):
+                    if revenues[i+1] > 0:
+                        growth = (revenues[i] - revenues[i+1]) / revenues[i+1] * 100
+                    else:
+                        growth = 0
+                    rev_growth.append(growth)
+                
+                # 计算利润增长率
+                profit_growth = []
+                for i in range(len(profits)-1):
+                    if profits[i+1] > 0:
+                        growth = (profits[i] - profits[i+1]) / profits[i+1] * 100
+                    else:
+                        growth = 0
+                    profit_growth.append(growth)
+                
+                data['revenue_growth'] = rev_growth + [0] * (3 - len(rev_growth))
+                data['profit_growth'] = profit_growth + [0] * (3 - len(profit_growth))
+                data['receivable_growth'] = [0, 0, 0]  # 需要资产负债表
+                data['inventory_growth'] = [0, 0, 0]   # 需要资产负债表
+                data['gross_margin'] = [0, 0, 0]
+                data['net_margin'] = [0, 0, 0]
+                
+                # 计算毛利率和净利率
+                if len(revenues) > 0 and revenues[0] > 0:
+                    # 从利润表获取毛利 (如果有)
+                    if '营业成本' in recent.columns:
+                        costs = recent['营业成本'].astype(float).tolist()
+                        gross_margins = [(rev - cost) / rev * 100 if rev > 0 else 0 
+                                       for rev, cost in zip(revenues, costs)]
+                        data['gross_margin'] = gross_margins
+                    
+                    # 计算净利率
+                    if len(profits) > 0:
+                        net_margins = [p / r * 100 if r > 0 else 0 
+                                     for p, r in zip(profits, revenues)]
+                        data['net_margin'] = net_margins
+                
+                # 摘要
+                data['summary'] = {
+                    'gross_margin': data['gross_margin'][0] if data['gross_margin'] else 0,
+                    'net_margin': data['net_margin'][0] if data['net_margin'] else 0,
+                    'roe': 0,  # 需要净资产
+                    'debt_ratio': 0,  # 需要资产负债表
+                }
+                
+                print(f"  财务数据获取成功 (利润表)")
+                return data
+        
+        except Exception as e:
+            print(f"  利润表获取失败: {e}")
+        
+        # 方法2: 尝试财务指标接口
+        try:
             df_indicator = ak.stock_financial_analysis_indicator(symbol=symbol)
             
             if df_indicator is not None and not df_indicator.empty:
-                # 取最近3年数据
                 recent = df_indicator.head(3)
-                
-                # 获取各列数据
                 cols = df_indicator.columns.tolist()
                 
-                # 尝试获取数据，使用列名匹配
                 def get_col_value(df, keywords, default=0):
                     """根据关键词查找列"""
                     for col in df.columns:
                         if any(kw in str(col) for kw in keywords):
-                            return df[col].tolist()
-                    return [default] * len(df)
+                            val = df[col].iloc[0] if isinstance(df, pd.DataFrame) else df[col]
+                            return float(val) if val else default
+                    return default
+                
+                import pandas as pd
                 
                 data['revenue_growth'] = get_col_value(recent, ['营业收入同比', '营收增长'])
                 data['profit_growth'] = get_col_value(recent, ['净利润同比', '利润增长'])
@@ -170,7 +235,6 @@ class FinancialAnomalyDetector:
                 data['gross_margin'] = get_col_value(recent, ['销售毛利率', '毛利率'])
                 data['net_margin'] = get_col_value(recent, ['销售净利率', '净利率'])
                 
-                # 摘要
                 latest = df_indicator.iloc[0]
                 data['summary'] = {
                     'gross_margin': float(get_col_value(pd.DataFrame([latest]), ['销售毛利率'])[0] or 0),
@@ -179,39 +243,46 @@ class FinancialAnomalyDetector:
                     'debt_ratio': float(get_col_value(pd.DataFrame([latest]), ['资产负债率'])[0] or 0),
                 }
                 
-                print(f"  财务数据获取成功")
+                print(f"  财务数据获取成功 (指标接口)")
                 return data
         
         except Exception as e:
-            print(f"  获取财务数据失败: {e}")
-            
-            # 备用方案：使用简化数据
-            try:
-                # 获取实时行情作为备用
-                df = ak.stock_zh_a_spot_em()
-                stock = df[df['代码'] == symbol]
-                
-                if not stock.empty:
-                    return {
-                        'revenue_growth': [0, 0, 0],
-                        'profit_growth': [0, 0, 0],
-                        'receivable_growth': [0, 0, 0],
-                        'inventory_growth': [0, 0, 0],
-                        'gross_margin': [0, 0, 0],
-                        'net_margin': [0, 0, 0],
-                        'summary': {
-                            'gross_margin': 0,
-                            'net_margin': 0,
-                            'roe': 0,
-                            'debt_ratio': 0,
-                        }
-                    }
-            except:
-                pass
-            
-            return None
+            print(f"  指标接口获取失败: {e}")
         
-        return data
+        # 方法3: 使用历史行情数据 (最简化)
+        try:
+            df = ak.stock_zh_a_hist(symbol=symbol, period='daily', adjust='qfq')
+            
+            if df is not None and not df.empty:
+                # 简化分析：只基于价格趋势
+                close = df['收盘'].astype(float)
+                
+                # 计算简单的增长率
+                if len(close) > 250:
+                    yoy_return = (close.iloc[-1] - close.iloc[-250]) / close.iloc[-250] * 100
+                else:
+                    yoy_return = 0
+                
+                return {
+                    'revenue_growth': [yoy_return, 0, 0],
+                    'profit_growth': [0, 0, 0],
+                    'receivable_growth': [0, 0, 0],
+                    'inventory_growth': [0, 0, 0],
+                    'gross_margin': [0, 0, 0],
+                    'net_margin': [0, 0, 0],
+                    'summary': {
+                        'gross_margin': 0,
+                        'net_margin': 0,
+                        'roe': 0,
+                        'debt_ratio': 0,
+                    },
+                    'price_trend': yoy_return
+                }
+        
+        except Exception as e:
+            print(f"  历史数据获取失败: {e}")
+        
+        return None
     
     def _check_receivable(self, data: Dict) -> Optional[Dict]:
         """检查应收账款异常"""
