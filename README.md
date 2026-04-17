@@ -1,10 +1,10 @@
 # Neo9527 Unified Finance Skill
 
-> 📊 可组合的金融AI能力平台 | v4.3 | by Neo9527
+> 📊 可组合的金融AI能力平台 | v4.4 | by Neo9527
 
 [![GitHub](https://img.shields.io/badge/GitHub-Neo9527--unified--finance--skill-blue)](https://github.com/beautifulboy9527/Neo9527-unified-finance-skill)
-[![Version](https://img.shields.io/badge/version-v4.3-brightgreen)]()
-[![Python](https://img.shields.io/badge/python-3.8+-blue)]()
+[![Version](https://img.shields.io/badge/version-v4.4-brightgreen)]()
+[![Python](https://img.shields.io/badge/python-3.9+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-orange)]()
 [![PyPI](https://img.shields.io/badge/pypi-neo9527--finance--skill-green)]()
 
@@ -12,10 +12,12 @@
 
 ## 🎯 项目简介
 
-**Neo9527 Unified Finance Skill v4.3** 是一个可组合的金融AI能力平台，采用Skills生态架构，支持加密货币、股票、外汇多市场分析，提供REST API服务，可被Agent直接调用。
+**Neo9527 Unified Finance Skill v4.4** 是一个可组合的金融AI能力平台，采用Skills生态架构，支持加密货币、股票、外汇多市场分析，提供REST API服务，可被Agent直接调用。
 
-### v4.3 核心特性
+### v4.4 核心特性
 
+- 🐋 **真实鲸鱼数据**: DeFiLlama + Dune Analytics，非模拟数据
+- 🔍 **数据质量保证**: 字段级provenance + 置信度评分 + 风险提示
 - 🧩 **Skills生态**: 6个独立Skills，可组合编排
 - 🤖 **Agent调用**: 标准接口 + OpenAI Function Calling
 - 🌐 **REST API**: FastAPI服务 + 自动文档
@@ -23,17 +25,16 @@
 - 🎯 **信号分级**: S/A/B/C分级系统
 - 🤖 **AI解读**: 专业分析师语言生成
 
-### v4.2 → v4.3 升级亮点
+### v4.3 → v4.4 升级亮点
 
-| 功能 | v4.2 | v4.3 |
+| 功能 | v4.3 | v4.4 |
 |------|------|------|
-| 架构 | 单体 | ✅ Skills生态 |
-| Agent调用 | ❌ | ✅ 标准接口 |
-| REST API | ❌ | ✅ FastAPI |
-| OpenAI Schema | ❌ | ✅ Function Calling |
-| 信号分级 | 基础 | ✅ S/A/B/C |
-| AI解读 | ❌ | ✅ 专业语言 |
-| 市场 | 加密 | ✅ 多市场 |
+| 鲸鱼数据 | ⚠️ 模拟 | ✅ 真实数据 |
+| 数据源 | DeFiLlama | ✅ + Dune预留 |
+| 置信度 | ❌ 无 | ✅ 0.45-0.95 |
+| 风险提示 | ❌ 无 | ✅ 完整 |
+| PyPI规范 | ⚠️ 不完整 | ✅ 完整 |
+| 版本管理 | ⚠️ 不一致 | ✅ 统一v4.4.0 |
 
 ---
 
@@ -330,6 +331,31 @@ response = openai.ChatCompletion.create(
 ---
 
 ## 📝 更新日志
+
+### v4.4 (2026-04-17)
+
+- 🐋 **OnchainWhaleSkill真实数据** (whale.py, 400行)
+  - DeFiLlama Protocols API (协议TVL)
+  - DeFiLlama Chains API (链级数据)
+  - Dune Analytics API (可选增强)
+  - 鲸鱼偏向分析 (accumulation/distribution)
+  - 置信度评分 (0.45-0.95)
+  - 风险提示 (risk_flags)
+- 🔍 **数据质量保证**
+  - 字段级provenance追踪
+  - 置信度计算引擎
+  - 风险提示机制
+  - 专业解读生成
+- 📦 **PyPI发布规范**
+  - setup.py v4.4.0
+  - pyproject.toml (现代打包)
+  - MANIFEST.in (完整清单)
+  - extras_require (分组依赖)
+- 📝 **SKILL.md规范**
+  - 完整触发词列表
+  - 数据源说明
+  - 分析规则
+  - 失败行为
 
 ### v4.3 (2026-04-17)
 
