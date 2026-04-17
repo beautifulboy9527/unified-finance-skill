@@ -1,25 +1,45 @@
 # Neo9527 Finance Skill - Dependencies
 
-# Core
-yfinance>=0.2.0
-pandas>=1.5.0
-numpy>=1.20.0
-requests>=2.28.0
+# ============ Core Dependencies ============
+# 数据获取
+yfinance>=0.2.0              # 美股/港股/外汇数据
+pandas>=1.5.0                # 数据处理
+numpy>=1.20.0                # 数值计算
+requests>=2.28.0             # HTTP请求
 
-# Visualization
-matplotlib>=3.6.0
-mplfinance>=0.12.0
+# 技术分析
+pandas-ta>=0.3.14b           # 技术指标库
 
-# API Server
-fastapi>=0.100.0
-uvicorn>=0.23.0
-pydantic>=2.0.0
+# ============ Visualization ============
+matplotlib>=3.6.0            # 图表绑制
+mplfinance>=0.12.0           # K线图
 
-# Optional
-# plotly>=5.0.0
-# ccxt>=4.0.0
+# ============ API Server ============
+fastapi>=0.100.0             # REST API框架
+uvicorn>=0.23.0              # ASGI服务器
+pydantic>=2.0.0              # 数据验证
 
-# Dev
-# pytest>=7.0.0
-# black>=23.0.0
-# isort>=5.0.0
+# ============ Optional (按需安装) ============
+# A股数据 (中国用户)
+# akshare>=1.10.0            # A股数据源
+
+# 加密货币交易
+# ccxt>=4.0.0                # 加密货币交易所API
+
+# ============ Development ============
+# 测试
+pytest>=7.0.0                # 测试框架
+pytest-cov>=4.0.0            # 覆盖率报告
+pytest-asyncio>=0.21.0       # 异步测试
+
+# 代码质量
+black>=23.0.0                # 代码格式化
+isort>=5.0.0                 # import排序
+flake8>=6.0.0                # 代码检查
+mypy>=1.0.0                  # 类型检查
+
+# ============ Notes ============
+# 1. 核心依赖已启用，默认安装即可使用加密货币分析
+# 2. A股分析需安装 akshare: pip install akshare
+# 3. 加密货币交易需安装 ccxt: pip install ccxt
+# 4. 开发依赖可通过 pip install -e .[dev] 安装

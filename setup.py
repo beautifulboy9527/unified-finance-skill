@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="neo9527-finance-skill",
-    version="4.2.0",
+    version="4.3.0",
     author="Neo9527",
     author_email="beautifulboy9527@gmail.com",
     description="Multi-dimensional financial analysis system with K-line charts, whale data, and signal stacking",
@@ -38,6 +38,7 @@ setup(
         "pandas>=1.5.0",
         "numpy>=1.20.0",
         "requests>=2.28.0",
+        "pandas-ta>=0.3.14b",
         "matplotlib>=3.6.0",
         "mplfinance>=0.12.0",
         "fastapi>=0.100.0",
