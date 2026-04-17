@@ -109,7 +109,8 @@ def generate_stock_html(results: Dict) -> str:
         <div class="card rounded-2xl p-6 mb-8 text-center">
             <div class="text-5xl mb-4">{rating['rating']}</div>
             <div class="text-xl text-gray-300 mb-2">综合评分: {rating['score']:.1f}/{rating['max_score']}</div>
-            <div class="text-lg" style="color: {colors['secondary']}">{rating['recommendation']}</div>
+            <div class="text-lg text-yellow-400">{rating['recommendation']}</div>
+            <div class="text-sm text-gray-500 mt-2">投资风格: {results.get('style', 'value')} | 分析深度: standard</div>
             
             <!-- 评分进度条 -->
             <div class="mt-4 max-w-md mx-auto">
@@ -240,50 +241,12 @@ def generate_stock_html(results: Dict) -> str:
             <!-- 分析师观点 -->
             <div class="mt-4 bg-gray-800/50 rounded-xl p-4">
                 <h3 class="font-semibold mb-3 text-yellow-400">分析师观点</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                        <div class="text-gray-400 text-sm">评级</div>
-                        <div class="font-bold text-lg">{analyst.get('评级', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-400 text-sm">目标价</div>
-                        <div class="font-bold text-lg">{analyst.get('目标价', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-400 text-sm">当前价</div>
-                        <div class="font-bold text-lg">{analyst.get('当前价', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-400 text-sm">潜在空间</div>
-                        <div class="font-bold text-lg text-yellow-400">{analyst.get('潜在空间', 'N/A')}</div>
-                    </div>
-                </div>
+                {generate_analyst_section(analyst)}
             </div>
         </div>
         
         <!-- Phase 1: 公司事实底座 -->
-        <div class="card rounded-2xl p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-                <iconify-icon icon="mdi:office-building" class="text-yellow-500"></iconify-icon>
-                Phase 1: 公司事实底座
-            </h2>
-            
-            <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="font-semibold mb-2 text-yellow-400">基本信息</h3>
-                    <ul class="space-y-1 text-sm">
-                        <li><span class="text-gray-400">行业:</span> {company_info.get('所属行业', 'N/A')}</li>
-                        <li><span class="text-gray-400">板块:</span> {company_info.get('所属板块', 'N/A')}</li>
-                        <li><span class="text-gray-400">员工:</span> {company_info.get('员工数量', 'N/A')}</li>
-                        <li><span class="text-gray-400">总部:</span> {company_info.get('总部地址', 'N/A')}</li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="font-semibold mb-2 text-yellow-400">主营业务</h3>
-                    <p class="text-sm text-gray-300">{p1.get('主营业务', {}).get('业务描述', 'N/A')[:200]}...</p>
-                </div>
-            </div>
-        </div>
+        {generate_phase1_html(phases.get(1, {}))}
         
         <!-- Phase 2: 行业周期 -->
         {generate_phase2_html(phases.get(2, {}))}
@@ -317,6 +280,117 @@ def generate_stock_html(results: Dict) -> str:
 </html>'''
     
     return html
+
+
+def generate_analyst_section(analyst: Dict) -> str:
+    """生成分析师观点部分，处理空数据"""
+    # 检查是否有有效数据
+    has_data = any(
+        v and v != 'N/A' 
+        for k, v in analyst.items() 
+        if k in ['评级', '目标价', '当前价']
+    )
+    
+    if not has_data:
+        return '''
+        <div class="text-center text-gray-400 py-4">
+            <p class="text-sm">暂无分析师数据</p>
+            <p class="text-xs mt-1">分析师评级和目标价数据需订阅专业数据源</p>
+        </div>
+        '''
+    
+    return f'''
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div>
+            <div class="text-gray-400 text-sm">评级</div>
+            <div class="font-bold text-lg">{analyst.get('评级', 'N/A')}</div>
+        </div>
+        <div>
+            <div class="text-gray-400 text-sm">目标价</div>
+            <div class="font-bold text-lg">{analyst.get('目标价', 'N/A')}</div>
+        </div>
+        <div>
+            <div class="text-gray-400 text-sm">当前价</div>
+            <div class="font-bold text-lg">{analyst.get('当前价', 'N/A')}</div>
+        </div>
+        <div>
+            <div class="text-gray-400 text-sm">潜在空间</div>
+            <div class="font-bold text-lg text-yellow-400">{analyst.get('潜在空间', 'N/A')}</div>
+        </div>
+    </div>
+    '''
+
+
+def generate_phase1_html(phase1: Dict) -> str:
+    """生成 Phase 1 HTML - 公司事实底座"""
+    if not phase1 or 'data' not in phase1:
+        return ''
+    
+    data = phase1['data']
+    company_info = data.get('公司基本信息', {})
+    main_business = data.get('主营业务', {})
+    revenue = data.get('收入构成', {})
+    
+    return f'''
+<div class="card rounded-2xl p-6 mb-6">
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <iconify-icon icon="mdi:office-building" class="text-yellow-500"></iconify-icon>
+        第一阶段：公司事实底座
+    </h2>
+    
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-800/50 rounded-xl p-4">
+            <h3 class="font-semibold mb-3 text-yellow-400">基本信息</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">公司名称</span>
+                    <span>{company_info.get('公司名称', 'N/A')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">所属行业</span>
+                    <span>{company_info.get('所属行业', 'N/A')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">所属板块</span>
+                    <span>{company_info.get('所属板块', 'N/A')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">员工数量</span>
+                    <span>{company_info.get('员工数量', 'N/A')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">总部地址</span>
+                    <span>{company_info.get('总部地址', 'N/A')}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800/50 rounded-xl p-4">
+            <h3 class="font-semibold mb-3 text-yellow-400">主营业务</h3>
+            <p class="text-sm text-gray-300 leading-relaxed">
+                {main_business.get('业务描述', '主营业务描述暂无')[:300]}{'...' if len(main_business.get('业务描述', '')) > 300 else ''}
+            </p>
+        </div>
+    </div>
+    
+    <div class="mt-4 bg-gray-800/50 rounded-xl p-4">
+        <h3 class="font-semibold mb-3 text-yellow-400">收入构成</h3>
+        <div class="grid md:grid-cols-3 gap-4 text-center">
+            <div>
+                <div class="text-gray-400 text-sm">主营业务</div>
+                <div class="text-lg">{revenue.get('主营业务', 'N/A')}</div>
+            </div>
+            <div>
+                <div class="text-gray-400 text-sm">其他业务</div>
+                <div class="text-lg">{revenue.get('其他业务', 'N/A')}</div>
+            </div>
+            <div>
+                <div class="text-gray-400 text-sm">说明</div>
+                <div class="text-sm">{revenue.get('说明', 'N/A')}</div>
+            </div>
+        </div>
+    </div>
+</div>'''
 
 
 def generate_phase2_html(phase2: Dict) -> str:
