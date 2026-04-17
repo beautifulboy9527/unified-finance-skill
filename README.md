@@ -6,7 +6,7 @@
 [![Version](https://img.shields.io/badge/version-v4.4-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.9+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-orange)]()
-[![PyPI](https://img.shields.io/badge/pypi-neo9527--finance--skill-green)]()
+[![PyPI](https://img.shields.io/pypi/v/neo9527-finance-skill?color=green)](https://pypi.org/project/neo9527-finance-skill/)
 
 ---
 
