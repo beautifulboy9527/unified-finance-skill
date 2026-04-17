@@ -1,331 +1,293 @@
 ---
 name: unified-finance-skill
 description: >
-  统一金融分析技能 - 饕餮整合多个金融 Skills 的最优能力。
-  支持全球市场 (A 股/港股/美股) 数据查询、技术分析、流动性分析、情绪分析、技术图表、相关性分析、估值监控、深度投研。
-  **完整集成** (非路径引用): agent-stock + akshare + yfinance + stock-liquidity + finance-sentiment + stock-market-pro + stock-correlation + akshare-data + stock-valuation-monitor + china-stock-research。
-  触发：股票分析、行情查询、技术分析、流动性分析、情绪分析、技术图表、相关性分析、估值分析、投研报告。
-version: 2.6.0
+  多维度金融分析系统 - Skills 生态架构
+  
+  核心能力:
+  - 交互式K线图 (lightweight-charts)
+  - 鲸鱼行为分析 (DeFiLlama)
+  - 多因子信号叠加 (叠buff)
+  - AI专业解读 (AI Commentary)
+  - REST API 服务 (FastAPI)
+  
+  Skills 架构:
+  - crypto-skill: 加密货币分析
+  - signal-skill: 信号检测
+  - report-skill: AI解读
+  - onchain-skill: 链上数据
+  
+  触发: 加密货币分析、信号检测、投资报告、链上数据
+version: 4.3.0
 integration: full
-tested: 2026-04-15
+tested: 2026-04-17
+skills:
+  - crypto-skill
+  - signal-skill
+  - report-skill
+  - onchain-skill
+api: true
+cli: true
 ---
 
-# Unified Finance Skill - 饕餮整合版
+# Neo9527 Unified Finance Skill - Skills 生态版
 
-> 整合多个金融 Skills 优势的完整可执行技能
+> 从单体工具到可组合的金融 AI 能力平台
 
 ## ✅ 测试状态
 
-**最后测试**: 2026-04-15 17:58
-**测试结果**: 7/7 通过 ✅
+**最后测试**: 2026-04-17 06:00
+**测试结果**: 全部通过 ✅
 
 | 测试项 | 状态 |
 |--------|------|
-| A股行情查询 | ✅ |
-| 美股行情查询 | ✅ |
-| 技术分析 | ✅ |
-| 财务数据 | ✅ |
-| 资金流向 | ✅ |
-| 流动性分析 | ✅ |
-| 无硬编码验证 | ✅ |
+| CLI 命令 | ✅ |
+| Skills 调用 | ✅ |
+| FastAPI 服务 | ✅ |
+| K线图生成 | ✅ |
+| 鲸鱼数据 | ✅ |
+| 信号检测 | ✅ |
+| AI 解读 | ✅ |
 
 ---
 
-## 整合来源
-
-| 来源 | 整合内容 | 模块 | 集成方式 |
-|------|---------|------|---------|
-| **agent-stock** | A股行情、K线、技术指标 | `core/quote.py`, `core/technical.py` | subprocess 调用 |
-| **akshare** | 财务数据、资金流向 | `core/financial.py` | 直接 import |
-| **yfinance** | 美股/港股数据 | `core/quote.py`, `core/financial.py` | 直接 import |
-| **stock-liquidity** | 流动性分析 | `features/liquidity.py` | **完整代码集成** |
-| **finance-sentiment** | 情绪分析 | `features/sentiment.py` | **完整代码集成** |
-| **stock-market-pro** | 高级技术图表 | `features/chart.py` | **完整代码集成** |
-| **stock-correlation** | 相关性分析 | `features/correlation.py` | **完整代码集成** |
-| **akshare-data** | 增强财务数据、宏观数据 | `features/enhanced_financial.py` | **完整代码集成** |
-| **stock-evaluator-v3** | 投资评估框架 | 参考 | **方法论参考** |
-
----
-
-## 模块架构
+## Skills 架构
 
 ```
-scripts/
-├── finance.py              # 统一入口 (CLI)
-├── config.py               # 输出路径配置
-├── test_unified_finance.py # 功能测试
-│
-├── core/                   # 核心模块 (数据获取)
-│   ├── quote.py           # 行情查询 (A股/港股/美股)
-│   ├── technical.py       # 技术分析 (MA/RSI/趋势)
-│   └── financial.py       # 财务数据 (财务摘要/资金流向)
-│
-└── features/               # 功能模块 (高级分析)
-    ├── liquidity.py       # 流动性分析 (买卖价差/市场冲击/换手率)
-    └── sentiment.py       # 情绪分析 (Reddit/X.com/新闻/Polymarket)
+skills/
+├── base_skill.py           # 标准接口规范
+├── crypto-skill/           # 加密货币分析
+│   └── analyze.py
+├── signal-skill/           # 信号检测
+│   └── detect.py
+├── report-skill/           # AI解读
+│   └── commentary.py
+└── onchain-skill/          # 链上数据
+    └── whale.py
 ```
+
+### 每个 Skill 特性
+
+- ✅ ≤ 300行代码
+- ✅ 标准输入输出
+- ✅ 可独立调用
+- ✅ 可组合编排
+- ✅ 带 data_source 字段
 
 ---
 
 ## 快速开始
 
-### 命令行
+### 方式1: CLI
 
 ```bash
-# 进入目录
-cd C:\Users\Administrator\.openclaw\workspace\.agents\skills\unified-finance-skill\scripts
+# 安装
+pip install neo9527-finance-skill
 
-# 行情查询
-python finance.py quote 002050    # A股
-python finance.py quote AAPL      # 美股
+# 分析
+neo-finance analyze BTC-USD
 
-# 技术分析
-python finance.py technical 002050
+# 信号
+neo-finance signals BTC-USD
 
-# 财务数据
-python finance.py financial 002050
+# K线
+neo-finance kline BTC-USD --save
 
-# 资金流向 (仅A股)
-python finance.py fundflow 002050
-
-# 流动性分析
-python finance.py liquidity AAPL
-
-# 情绪分析 (需要 ADANOS_API_KEY)
-python finance.py sentiment AAPL
-
-# 快速分析 (行情 + 技术)
-python finance.py quick 002050
-
-# 完整分析 (所有模块)
-python finance.py full 002050
-
-# 运行测试
-python test_unified_finance.py
+# 链上
+neo-finance onchain BTC
 ```
 
-### Python API
+### 方式2: Python API
 
 ```python
-import sys
-sys.path.insert(0, r'C:\Users\Administrator\.openclaw\workspace\.agents\skills\unified-finance-skill\scripts')
+from skills.base_skill import SkillInput, SkillRegistry
 
-from core.quote import get_quote
-from core.technical import analyze_technical
-from core.financial import get_financial_summary, get_fundflow
-from features.liquidity import analyze_liquidity
-from features.sentiment import analyze_sentiment
+# 执行分析
+output = SkillRegistry.execute(
+    'CryptoAnalysisSkill',
+    SkillInput(symbol='BTC-USD', market='crypto')
+)
 
-# 行情查询 (自动路由到最佳数据源)
-quote = get_quote('002050')   # A股 -> agent-stock
-quote = get_quote('AAPL')     # 美股 -> yfinance
-quote = get_quote('00700.HK') # 港股 -> yfinance
+print(f"Score: {output.score}/100")
+print(f"Signals: {len(output.signals)}")
+```
 
-# 技术分析
-tech = analyze_technical('002050')
-print(tech['basic_indicators'])  # MA5/MA10/MA20, RSI, 趋势
+### 方式3: REST API
 
-# 财务数据
-fin = get_financial_summary('002050')
-print(fin['revenue_3y'])  # 3年营收
+```bash
+# 启动服务
+uvicorn api.server:app --reload
 
-flow = get_fundflow('002050')
-print(flow['summary'])  # 资金流向汇总
-
-# 流动性分析
-liq = analyze_liquidity('AAPL')
-print(liq['grade'])  # 流动性评级
-
-# 情绪分析 (需要 ADANOS_API_KEY)
-sent = analyze_sentiment('AAPL')
-print(sent['sentiment'])  # 综合情绪
+# 调用
+curl -X POST http://localhost:8000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"symbol":"BTC-USD","market":"crypto"}'
 ```
 
 ---
 
-## 核心功能
+## 核心 Skills
 
-### 1. 统一行情查询 (`core/quote.py`)
+### 1. CryptoAnalysisSkill
 
-**整合来源**: agent-stock + akshare + yfinance
+**功能**: 多维度加密货币分析
 
-**能力**:
-- 自动市场检测 (A股/港股/美股)
-- 智能路由到最佳数据源
-- A股: agent-stock (快速) → akshare (备选)
-- 港股/美股: yfinance
-
-**输出示例**:
-```json
-{
-  "symbol": "002050",
-  "market": "cn",
-  "name": "三花智控",
-  "price": 45.11,
-  "change_pct": -0.94,
-  "pe": 46.72,
-  "pb": 5.98,
-  "market_cap": 1898.24,
-  "data_source": "agent-stock"
-}
+**输入**:
+```python
+SkillInput(
+    symbol='BTC-USD',
+    market='crypto',
+    timeframe='medium'
+)
 ```
 
-### 2. 技术分析 (`core/technical.py`)
-
-**整合来源**: agent-stock
-
-**能力**:
-- 基础技术指标 (MA5/MA10/MA20)
-- RSI 计算
-- 乖离率
-- 趋势判断
-
-**输出示例**:
-```json
-{
-  "basic_indicators": {
-    "current_price": 44.82,
-    "ma5": 44.16,
-    "ma10": 43.28,
-    "ma20": 43.25,
-    "rsi": 62.68,
-    "trend": "uptrend"
-  }
-}
+**输出**:
+```python
+SkillOutput(
+    score=75,  # 0-100
+    confidence=0.78,
+    signals=[...],
+    data={
+        'market': {...},
+        'technical': {...},
+        'conclusion': {...}
+    }
+)
 ```
-
-### 3. 财务数据 (`core/financial.py`)
-
-**整合来源**: akshare + yfinance
-
-**能力**:
-- 财务摘要 (营收、利润、ROE)
-- 资金流向 (仅A股)
-- 自动按市场选择数据源
-
-### 4. 流动性分析 (`features/liquidity.py`)
-
-**整合来源**: stock-liquidity (完整代码集成)
-
-**能力**:
-- 买卖价差
-- 成交量分析
-- 市场冲击估算
-- 换手率
-- Amihud 非流动性指标
-- 流动性评级
-
-**输出示例**:
-```json
-{
-  "grade": "Low",
-  "spread": {"bid": 264.48, "ask": 266.98},
-  "volume": {"avg_daily_volume": 46670892},
-  "impact": {"impact_1pct_adv_bps": 16.27}
-}
-```
-
-### 5. 情绪分析 (`features/sentiment.py`)
-
-**整合来源**: finance-sentiment (完整代码集成)
-
-**能力**:
-- Reddit 情绪
-- X.com (Twitter) 情绪
-- 新闻情绪
-- Polymarket 预测市场
-- 综合情绪判断
-
-**依赖**: `ADANOS_API_KEY` 环境变量
 
 ---
 
-## 输出路径
+### 2. SignalDetectionSkill
 
-所有输出文件统一存放到:
+**功能**: 多因子信号检测 + 分级
 
-| 类型 | 路径 |
-|------|------|
-| 报告 | `D:\OpenClaw\outputs\reports\` |
-| 图表 | `D:\OpenClaw\outputs\charts\` |
-| 数据 | `D:\OpenClaw\outputs\data\` |
-| 日志 | `D:\OpenClaw\outputs\logs\` |
+**信号分级**:
+- S级: 强度≥10 + 置信度≥75%
+- A级: 强度≥5 + 置信度≥60%
+- B级: 强度 -5~5
+- C级: 强度≤-5
+
+**时间维度**:
+- short: 1-7天
+- medium: 1-3月
+- long: 3月+
+
+---
+
+### 3. AICommentarySkill
+
+**功能**: 专业分析师解读
+
+**输出**:
+- 标题
+- 技术面总结
+- 风险提示
+- 操作建议
+- 一句话总结
+
+---
+
+### 4. OnchainWhaleSkill
+
+**功能**: 链上鲸鱼数据
+
+**数据源**: DeFiLlama (免费)
+
+**输出**:
+- TVL 变化
+- 协议排名
+- 资金流信号
+
+---
+
+## FastAPI 服务
+
+### 接口列表
+
+| 方法 | 路径 | 功能 |
+|------|------|------|
+| POST | `/api/analyze` | 综合分析 |
+| POST | `/api/signals` | 信号检测 |
+| POST | `/api/commentary` | AI解读 |
+| GET | `/api/quick/{symbol}` | 快速分析 |
+| GET | `/api/schema/openai` | OpenAI Schema |
+
+### OpenAI Function Calling
+
+```json
+{
+  "functions": [{
+    "name": "analyze_crypto",
+    "description": "Multi-dimensional crypto analysis",
+    "parameters": {
+      "symbol": "string",
+      "market": "string",
+      "timeframe": "string"
+    }
+  }]
+}
+```
+
+---
+
+## 数据来源
+
+| 类型 | API | 状态 |
+|------|-----|------|
+| 市场数据 | CoinGecko | ✅ 免费 |
+| 技术指标 | yfinance | ✅ 免费 |
+| K线数据 | yfinance | ✅ 免费 |
+| 链上数据 | Blockchain.com | ✅ 免费 |
+| DeFi数据 | DeFiLlama | ✅ 免费 |
+| 情绪指数 | alternative.me | ✅ 免费 |
 
 ---
 
 ## 依赖
 
 ```bash
-pip install yfinance akshare pandas numpy requests
-```
-
-## 环境变量
-
-```bash
-# 情绪分析 API Key (可选)
-export ADANOS_API_KEY="sk_live_..."
+pip install neo9527-finance-skill
 ```
 
 ---
 
-## ⚠️ Gotchas
-
-### 数据源限制
-
-1. **A股数据**: 使用东方财富 API，需代理或境内网络
-2. **yfinance**: 对 A 股支持有限，优先使用 agent-stock
-3. **港股代码格式**: `00700.HK` (必须带后缀)
-4. **美股代码**: 直接使用 ticker (如 `AAPL`)
-5. **情绪分析**: 需要 Adanos API Key
-
-### 数据时效性
-
-- 行情数据有 15 分钟延迟
-- 财务数据按季度更新
-- 建议结合实时数据验证
-
-### Windows 编码
-
-所有脚本已添加 UTF-8 修复，如遇乱码检查终端编码设置。
-
----
-
-## 📋 待集成功能
-
-| 功能 | 来源 Skill | 优先级 | 状态 |
-|------|-----------|--------|------|
-| 高级技术图表 | stock-market-pro | P0 | 📋 待开发 |
-| 相关性分析 | stock-correlation | P1 | 📋 待开发 |
-| 估值监控 | stock-valuation-monitor | P1 | 📋 待开发 |
-| A股价值分析 | china-stock-analysis | P0 | 📋 待开发 |
-| 8阶段投研 | china-stock-research | P2 | 📋 待开发 |
-
-详见: `ARCHITECTURE.md`
-
----
-
-## 📁 文件结构
+## 项目结构
 
 ```
 unified-finance-skill/
-├── SKILL.md                    # 本文件
-├── ARCHITECTURE.md             # 架构与迭代管理文档
-├── config/
-│   ├── alerts.json
-│   └── portfolio.json
-└── scripts/
-    ├── finance.py              # 统一入口
-    ├── config.py               # 输出路径配置
-    ├── test_unified_finance.py # 功能测试
-    ├── core/
-    │   ├── quote.py
-    │   ├── technical.py
-    │   └── financial.py
-    └── features/
-        ├── liquidity.py
-        └── sentiment.py
+├── SKILL.md              # 本文件
+├── README.md             # 完整文档
+├── setup.py              # PyPI 配置
+├── requirements.txt      # 依赖列表
+│
+├── skills/               # Skills 生态
+│   ├── base_skill.py
+│   ├── crypto-skill/
+│   ├── signal-skill/
+│   ├── report-skill/
+│   └── onchain-skill/
+│
+├── api/                  # REST API
+│   └── server.py
+│
+├── scripts/              # 核心模块
+│   ├── finance.py        # CLI 入口
+│   ├── features/
+│   └── core/
+│
+└── docs/                 # 文档
+    ├── PHASE-12-ROADMAP.md
+    └── PHASE-13-ROADMAP.md
 ```
 
 ---
 
-*饕餮整合 v2.2.0 - 完整可执行版 by 小灰灰 🐕*
+## 版本历史
+
+- **v4.3**: Skills 生态架构 + FastAPI
+- **v4.2**: K线图 + 鲸鱼数据 + CLI
+- **v4.0**: 叠buff + 形态识别
+- **v3.2**: 插件系统 + 回测
+
+---
+
+*Skills 生态 v4.3.0 - 可组合的金融 AI 平台 by Neo9527 🚀*
