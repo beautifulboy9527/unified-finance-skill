@@ -196,6 +196,13 @@ class OnchainDataFetcher:
         # 1. DeFi 数据 (ETH)
         if symbol.upper() in ['ETH', 'ETHEREUM']:
             result['defi'] = self.get_defillama_data('Ethereum')
+            
+            # 增强的 DeFi 分析
+            try:
+                from features.onchain_whale_skill import get_defillama_data
+                result['defi_enhanced'] = get_defillama_data('Ethereum')
+            except:
+                pass
         
         # 2. BTC 链上指标
         if symbol.upper() in ['BTC', 'BITCOIN']:
