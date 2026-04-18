@@ -118,6 +118,17 @@ class ComprehensiveStockAnalyzer:
             print(f"   财报分析模块加载失败: {e}")
             self.earnings = None
         
+        # 板块联动分析
+        try:
+            self.correlation = load_module(
+                "correlation",
+                os.path.join(BASE_DIR, "scripts", "features", "correlation.py")
+            )
+            print("   板块联动模块加载成功") if self.correlation else print("   板块联动模块为空")
+        except Exception as e:
+            print(f"   板块联动模块加载失败: {e}")
+            self.correlation = None
+        
         # 情绪分析
         try:
             self.sentiment = load_module(
@@ -391,12 +402,63 @@ class ComprehensiveStockAnalyzer:
             except Exception as e:
                 print(f"   ERROR: {str(e)[:50]}")
         
-        # 6. 新闻分析 (用于选股，不用于个股分析)
-        # 注: 新闻分析改为选股筛选使用，个股报告不再包含
-        print("\n【6/10】新闻分析... (已跳过，用于选股)")
+        # 6. 财报分析
+        print("\n【6/12】财报分析...")
+        if self.earnings:
+            try:
+                analyzer = self.earnings.EarningsAnalyzer(symbol)
+                result = analyzer.generate_preview()
+                
+                if result and not result.get('error'):
+                    report['sections']['earnings'] = {
+                        'earnings_date': result.get('earnings_date'),
+                        'company_info': result.get('company_info', {}),
+                        'estimates': result.get('estimates', {}),
+                        'historical_beats': result.get('historical_beats', [])[:3],
+                        'summary': result.get('summary')
+                    }
+                    print(f"   OK: 财报日期: {result.get('earnings_date', 'N/A')}")
+                    if result.get('estimates'):
+                        est = result['estimates']
+                        print(f"   OK: EPS预期: {est.get('eps_estimate', 'N/A')}")
+                else:
+                    print("   WARN: 无财报数据")
+            except Exception as e:
+                print(f"   ERROR: {str(e)[:50]}")
         
-        # 6. 情绪分析
-        print("\n【6/8】市场情绪...")
+        # 7. 板块联动分析
+        print("\n【7/12】板块联动分析...")
+        if self.correlation:
+            try:
+n                # 获取同行业股票列表
+                industry_peers = {
+                    'AAPL': ['MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA'],
+                    'MSFT': ['AAPL', 'GOOGL', 'AMZN', 'META', 'NVDA'],
+                    'GOOGL': ['AAPL', 'MSFT', 'AMZN', 'META', 'NVDA'],
+                }.get(symbol, [])
+                
+                if industry_peers:
+                    analyzer = self.correlation.CorrelationAnalyzer(symbol)
+                    result = analyzer.discover_correlated(symbol, industry_peers, period='3mo', top_n=5)
+                    
+                    if result and not result.get('error') and result.get('peers'):
+                        report['sections']['correlation'] = {
+                            'top_correlated': result['peers'][:3],
+                            'period': result.get('period', '3mo')
+                        }
+                        print(f"   OK: 发现 {len(result['peers'])} 个相关股票")
+                        for peer in result['peers'][:3]:
+                            print(f"      - {peer.get('ticker')}: 相关性{peer.get('correlation', 0):.2f}")
+                else:
+                    print("   WARN: 无同行业数据")
+            except Exception as e:
+                print(f"   ERROR: {str(e)[:50]}")
+        
+        # 8. 新闻分析 (用于选股，不用于个股分析)
+        print("\n【7/12】新闻分析... (已跳过，用于选股)")
+        
+        # 8. 情绪分析
+        print("\n【8/12】市场情绪...")
         if self.sentiment:
             try:
                 result = self.sentiment.analyze_sentiment(symbol)
@@ -417,8 +479,8 @@ class ComprehensiveStockAnalyzer:
         else:
             print(f"   ⚠️ 情绪模块未加载")
         
-        # 7. 监管风险分析
-        print("\n【7/8】监管风险分析...")
+        # 9. 监管风险分析
+        print("\n【9/12】监管风险分析...")
         if self.regulation:
             try:
                 result = self.regulation.check_regulation_risk(symbol)
@@ -434,8 +496,8 @@ class ComprehensiveStockAnalyzer:
             except Exception as e:
                 print(f"   ❌ 失败: {e}")
         
-        # 8. 深度研报
-        print("\n【8/8】深度研报...")
+        # 10. 深度研报
+        print("\n【10/12】深度研报...")
         if self.deep_research:
             try:
                 style_enum = getattr(self.deep_research.InvestmentStyle, style.upper(), self.deep_research.InvestmentStyle.VALUE)
