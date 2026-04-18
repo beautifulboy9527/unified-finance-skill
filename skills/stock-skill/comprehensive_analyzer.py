@@ -107,6 +107,17 @@ class ComprehensiveStockAnalyzer:
             print(f"   回测引擎加载失败: {e}")
             self.backtest_engine = None
         
+        # 财报分析
+        try:
+            self.earnings = load_module(
+                "earnings",
+                os.path.join(BASE_DIR, "scripts", "features", "earnings.py")
+            )
+            print("   财报分析模块加载成功") if self.earnings else print("   财报分析模块为空")
+        except Exception as e:
+            print(f"   财报分析模块加载失败: {e}")
+            self.earnings = None
+        
         # 情绪分析
         try:
             self.sentiment = load_module(
@@ -310,9 +321,63 @@ class ComprehensiveStockAnalyzer:
             except Exception as e:
                 print(f"   ❌ 失败: {e}")
         
-        # 5. 新闻分析 (用于选股，不用于个股分析)
+        # 5.5. 回测验证
+        print("\n【5.5/10】回测验证...")
+        if self.backtest_engine and 'technical' in report['sections']:
+            try:
+                import numpy as np
+                tech = report['sections']['technical']
+                
+                backtest_results = []
+                
+                # MACD信号回测
+                if '金叉' in tech.get('macd_status', ''):
+                    engine = self.backtest_engine.BacktestEngine(initial_capital=100000)
+                    result = engine.backtest_signal(symbol, lambda df: 'buy', 'MACD金叉', days=365)
+                    if 'win_rate' in result:
+                        backtest_results.append({
+                            'signal': 'MACD金叉',
+                            'win_rate': result['win_rate'],
+                            'total_return': result.get('total_return', 0),
+                            'avg_profit': result.get('avg_profit_pct', 0),
+                            'max_drawdown': result.get('max_drawdown', 0),
+                            'sharpe': result.get('sharpe_ratio', 0),
+                            'trades': result.get('total_trades', 0)
+                        })
+                
+                # RSI信号回测
+                rsi = tech.get('rsi', 50)
+                if rsi > 70 or rsi < 30:
+                    engine = self.backtest_engine.BacktestEngine(initial_capital=100000)
+                    signal_func = lambda df: 'sell' if rsi > 70 else 'buy'
+                    result = engine.backtest_signal(symbol, signal_func, 'RSI信号', days=365)
+                    if 'win_rate' in result:
+                        backtest_results.append({
+                            'signal': f'RSI{"超买" if rsi > 70 else "超卖"}',
+                            'win_rate': result['win_rate'],
+                            'total_return': result.get('total_return', 0),
+                            'avg_profit': result.get('avg_profit_pct', 0),
+                            'max_drawdown': result.get('max_drawdown', 0),
+                            'sharpe': result.get('sharpe_ratio', 0),
+                            'trades': result.get('total_trades', 0)
+                        })
+                
+                if backtest_results:
+                    report['sections']['backtest'] = {
+                        'results': backtest_results,
+                        'count': len(backtest_results)
+                    }
+                    print(f"   OK: 回测验证完成")
+                    for bt in backtest_results:
+                        print(f"      - {bt['signal']}: 胜率{bt['win_rate']*100:.0f}%, 收益{bt['total_return']*100:.1f}%")
+                else:
+                    print("   WARN: 无回测结果")
+            except Exception as e:
+                print(f"   ERROR: {str(e)[:50]}")
+        
+        # 6. 新闻分析 (用于选股，不用于个股分析)
         # 注: 新闻分析改为选股筛选使用，个股报告不再包含
-        print("\n【5/8】新闻分析... (已跳过，用于选股)")
+        print("\n【6/10】新闻分析... (已跳过，用于选股)")
         
         # 6. 情绪分析
         print("\n【6/8】市场情绪...")
