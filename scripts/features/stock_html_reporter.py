@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-股票专业HTML报告生成器 v2.0
-参考加密货币报告风格，专业投资人视角
+完整版股票报告生成器 v3.0
+修复emoji编码 + 集成多模块 + 高信息密度
 """
 
 import sys
@@ -15,14 +15,14 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 
-class ProfessionalStockReporter:
-    """专业股票HTML报告生成器"""
+class CompleteStockReporter:
+    """完整版股票报告生成器"""
     
     def __init__(self):
-        self.template_dir = Path(__file__).parent / 'templates'
+        pass
     
     def generate(self, report: Dict, enhancer=None) -> str:
-        """生成专业HTML报告"""
+        """生成完整HTML报告"""
         
         symbol = report['symbol']
         overall = report.get('overall', {})
@@ -32,27 +32,23 @@ class ProfessionalStockReporter:
         style = report.get('style', 'value')
         sections = report.get('sections', {})
         
-        # 构建完整HTML
-        html = self._build_html(symbol, score, recommendation, timestamp, style, sections, enhancer)
-        
-        return html
+        return self._build_complete_html(
+            symbol, score, recommendation, timestamp, style, sections, enhancer
+        )
     
-    def _build_html(self, symbol: str, score: float, recommendation: str, 
-                    timestamp: str, style: str, sections: Dict, enhancer) -> str:
-        """构建完整HTML页面"""
+    def _build_complete_html(self, symbol: str, score: float, recommendation: str,
+                             timestamp: str, style: str, sections: Dict, enhancer) -> str:
+        """构建完整HTML"""
         
-        # 推荐颜色
+        # 决策颜色
         if '买入' in recommendation or '强烈' in recommendation:
             rec_color = '#27ae60'
-            rec_bg = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)'
         elif '持有' in recommendation:
             rec_color = '#f39c12'
-            rec_bg = 'linear-gradient(135deg, #f39c12 0%, #f1c40f 100%)'
         else:
             rec_color = '#e74c3c'
-            rec_bg = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)'
         
-        return f'''<!DOCTYPE html>
+        html = f'''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -62,7 +58,7 @@ class ProfessionalStockReporter:
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -71,7 +67,7 @@ class ProfessionalStockReporter:
         }}
         
         .container {{
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 16px;
@@ -79,7 +75,6 @@ class ProfessionalStockReporter:
             overflow: hidden;
         }}
         
-        /* 头部评分区域 */
         .header {{
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
@@ -90,22 +85,7 @@ class ProfessionalStockReporter:
         .symbol-title {{
             font-size: 48px;
             font-weight: 700;
-            margin-bottom: 5px;
             letter-spacing: 2px;
-        }}
-        
-        .company-name {{
-            font-size: 18px;
-            opacity: 0.8;
-            margin-bottom: 30px;
-        }}
-        
-        .score-section {{
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 40px;
-            margin: 30px 0;
         }}
         
         .score-circle {{
@@ -114,10 +94,11 @@ class ProfessionalStockReporter:
             border-radius: 50%;
             background: rgba(255,255,255,0.1);
             border: 4px solid {rec_color};
-            display: flex;
+            display: inline-flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            margin: 30px 0;
         }}
         
         .score-number {{
@@ -129,14 +110,14 @@ class ProfessionalStockReporter:
         .score-label {{
             font-size: 14px;
             opacity: 0.8;
-            margin-top: 5px;
         }}
         
         .decision-box {{
-            background: {rec_bg};
+            background: {rec_color};
             padding: 20px 50px;
             border-radius: 50px;
             display: inline-block;
+            margin-top: 20px;
         }}
         
         .decision-text {{
@@ -145,18 +126,10 @@ class ProfessionalStockReporter:
             letter-spacing: 3px;
         }}
         
-        .meta-info {{
-            margin-top: 25px;
-            font-size: 13px;
-            opacity: 0.7;
-        }}
-        
-        /* 主要内容区域 */
         .content {{
             padding: 50px 40px;
         }}
         
-        /* 章节样式 */
         .section {{
             margin-bottom: 60px;
         }}
@@ -195,7 +168,6 @@ class ProfessionalStockReporter:
             margin-left: 15px;
         }}
         
-        /* 指标网格 */
         .metrics-grid {{
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -235,7 +207,6 @@ class ProfessionalStockReporter:
             color: #e74c3c;
         }}
         
-        /* 数据表格 */
         .data-table {{
             width: 100%;
             border-collapse: collapse;
@@ -271,7 +242,6 @@ class ProfessionalStockReporter:
             background: #f8f9fa;
         }}
         
-        /* 信号卡片 */
         .signal-grid {{
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -295,6 +265,11 @@ class ProfessionalStockReporter:
             border-left: 4px solid #dc3545;
         }}
         
+        .signal-card.neutral {{
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 4px solid #ffc107;
+        }}
+        
         .signal-title {{
             font-size: 18px;
             font-weight: 600;
@@ -314,7 +289,36 @@ class ProfessionalStockReporter:
             line-height: 1.6;
         }}
         
-        /* 小结框 */
+        .analysis-box {{
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 25px 0;
+            border-left: 4px solid #0f3460;
+        }}
+        
+        .analysis-title {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f3460;
+            margin-bottom: 15px;
+        }}
+        
+        .analysis-text {{
+            font-size: 15px;
+            color: #2c3e50;
+            line-height: 1.8;
+        }}
+        
+        .analysis-text ul {{
+            margin: 15px 0;
+            padding-left: 20px;
+        }}
+        
+        .analysis-text li {{
+            margin: 10px 0;
+        }}
+        
         .summary-box {{
             background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
             padding: 25px;
@@ -336,7 +340,6 @@ class ProfessionalStockReporter:
             line-height: 1.8;
         }}
         
-        /* 数据来源标注 */
         .data-source {{
             background: #f8f9fa;
             padding: 12px 16px;
@@ -347,7 +350,6 @@ class ProfessionalStockReporter:
             border-left: 3px solid #95a5a6;
         }}
         
-        /* 建议卡片 */
         .advice-section {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -398,34 +400,6 @@ class ProfessionalStockReporter:
             display: inline-block;
         }}
         
-        /* 深度研报详情 */
-        .research-detail {{
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 20px 0;
-        }}
-        
-        .research-phase {{
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }}
-        
-        .phase-title {{
-            font-size: 16px;
-            font-weight: 600;
-            color: #0f3460;
-            margin-bottom: 10px;
-        }}
-        
-        .phase-content {{
-            font-size: 14px;
-            color: #555;
-            line-height: 1.8;
-        }}
-        
-        /* 风险提示 */
         .risk-section {{
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
             padding: 30px;
@@ -447,7 +421,6 @@ class ProfessionalStockReporter:
             line-height: 1.8;
         }}
         
-        /* 页脚 */
         .footer {{
             background: #f8f9fa;
             padding: 40px;
@@ -461,7 +434,6 @@ class ProfessionalStockReporter:
             line-height: 1.8;
         }}
         
-        /* 响应式 */
         @media (max-width: 768px) {{
             .metrics-grid {{
                 grid-template-columns: repeat(2, 1fr);
@@ -474,143 +446,160 @@ class ProfessionalStockReporter:
             .advice-section {{
                 grid-template-columns: 1fr;
             }}
-            
-            .symbol-title {{
-                font-size: 36px;
-            }}
-            
-            .score-number {{
-                font-size: 44px;
-            }}
         }}
     </style>
 </head>
 <body>
     <div class="container">
-        {self._build_header(symbol, score, recommendation, timestamp, style)}
-        <div class="content">
-            {self._build_sections(sections, enhancer)}
-        </div>
-        {self._build_footer()}
-    </div>
-</body>
-</html>'''
-    
-    def _build_header(self, symbol: str, score: float, recommendation: str, 
-                      timestamp: str, style: str) -> str:
-        """构建头部"""
-        return f'''
         <div class="header">
             <div class="symbol-title">{symbol}</div>
-            <div class="company-name">投资分析报告</div>
-            
-            <div class="score-section">
-                <div class="score-circle">
-                    <div class="score-number">{score:.0f}</div>
-                    <div class="score-label">综合评分</div>
-                </div>
+            <div class="score-circle">
+                <div class="score-number">{score:.0f}</div>
+                <div class="score-label">综合评分</div>
             </div>
-            
             <div class="decision-box">
                 <div class="decision-text">{recommendation}</div>
             </div>
-            
-            <div class="meta-info">
-                生成时间: {timestamp} | 投资风格: {style} | 版本: v6.3
+            <div style="margin-top: 20px; font-size: 13px; opacity: 0.7;">
+                生成时间: {timestamp} | 投资风格: {style} | 版本: v6.4
             </div>
         </div>
-        '''
+        
+        <div class="content">
+            {self._build_all_sections(sections, enhancer)}
+        </div>
+        
+        <div class="footer">
+            <div class="footer-text">
+                报告由 Neo9527 Finance Agent v6.4 生成
+                <br>本报告基于公开数据分析，仅供参考
+            </div>
+        </div>
+    </div>
+</body>
+</html>'''
+        
+        return html
     
-    def _build_sections(self, sections: Dict, enhancer) -> str:
+    def _build_all_sections(self, sections: Dict, enhancer) -> str:
         """构建所有章节"""
-        html_parts = []
+        parts = []
         
-        # 第一部分: 基本面分析
+        # 1. 基本面分析
         if 'fundamentals' in sections:
-            html_parts.append(self._build_fundamentals(sections['fundamentals'], enhancer))
+            parts.append(self._build_fundamentals_detailed(sections['fundamentals']))
         
-        # 第二部分: 估值分析
+        # 2. 估值分析
         if 'valuation' in sections:
-            html_parts.append(self._build_valuation(sections['valuation']))
+            parts.append(self._build_valuation_detailed(sections['valuation']))
         
-        # 第三部分: 财务健康
+        # 3. 财务健康
         if 'financial_check' in sections:
-            html_parts.append(self._build_financial(sections['financial_check']))
+            parts.append(self._build_financial_detailed(sections['financial_check']))
         
-        # 第四部分: 技术分析
+        # 4. 技术分析 + 入场信号
         if 'technical' in sections:
-            html_parts.append(self._build_technical(sections['technical'], enhancer))
+            parts.append(self._build_technical_detailed(sections['technical'], sections.get('entry_signals'), enhancer))
         
-        # 第五部分: 市场情绪
+        # 5. 市场情绪
         if 'sentiment' in sections:
-            html_parts.append(self._build_sentiment(sections['sentiment']))
+            parts.append(self._build_sentiment_detailed(sections['sentiment']))
         
-        # 第六部分: 监管风险
+        # 6. 监管风险
         if 'regulation' in sections:
-            html_parts.append(self._build_regulation(sections['regulation']))
+            parts.append(self._build_regulation_detailed(sections['regulation']))
         
-        # 第七部分: 深度研报 (仅当有详细内容时)
-        if 'deep_research' in sections:
-            dr = sections['deep_research']
-            # 必须有评级且score>0才显示
-            if dr.get('rating') and dr.get('score', 0) > 0:
-                html_parts.append(self._build_research(dr))
+        # 7. 深度研报
+        if 'deep_research' in sections and sections['deep_research'].get('score', 0) > 0:
+            parts.append(self._build_research_detailed(sections['deep_research']))
         
-        # 第八部分: 全局观点与建议
-        html_parts.append(self._build_overall(sections, enhancer))
+        # 8. 全局观点
+        parts.append(self._build_overall_detailed(sections, enhancer))
         
-        return '\n'.join(html_parts)
+        return '\n'.join(parts)
     
-    def _build_fundamentals(self, fund: Dict, enhancer) -> str:
-        """构建基本面分析"""
+    def _build_fundamentals_detailed(self, fund: Dict) -> str:
+        """构建详细的基本面分析"""
         pe = fund.get('pe')
         pb = fund.get('pb')
         roe = fund.get('roe')
         market_cap = fund.get('market_cap')
         
-        # 格式化市值
+        # 市值格式化
         if market_cap:
             if market_cap > 1e12:
                 mc_str = f"${market_cap/1e12:.2f}万亿"
+                mc_level = "大盘股"
             elif market_cap > 1e9:
                 mc_str = f"${market_cap/1e9:.2f}亿"
+                mc_level = "中盘股"
             else:
                 mc_str = f"${market_cap/1e6:.2f}百万"
+                mc_level = "小盘股"
         else:
             mc_str = "N/A"
+            mc_level = "未知"
         
         # ROE分析
         if roe:
             if roe > 20:
                 roe_status = "优秀"
                 roe_color = "#27ae60"
+                roe_analysis = "ROE超过20%，盈利能力极强，具备持续竞争优势"
             elif roe > 15:
                 roe_status = "良好"
                 roe_color = "#27ae60"
+                roe_analysis = "ROE在15-20%区间，盈利能力良好"
             elif roe > 10:
                 roe_status = "一般"
                 roe_color = "#f39c12"
+                roe_analysis = "ROE在10-15%区间，盈利能力一般"
             else:
                 roe_status = "较差"
                 roe_color = "#e74c3c"
+                roe_analysis = "ROE低于10%，盈利能力较弱，需关注盈利质量"
         else:
             roe_status = "N/A"
             roe_color = "#7f8c8d"
+            roe_analysis = "无ROE数据"
         
         # PE分析
         if pe:
-            if pe < 20:
+            if pe < 15:
                 pe_status = "低估"
                 pe_color = "#27ae60"
-            elif pe < 30:
+                pe_analysis = "PE低于15倍，估值较低，具备安全边际"
+            elif pe < 25:
                 pe_status = "合理"
                 pe_color = "#f39c12"
+                pe_analysis = "PE在15-25倍区间，估值合理"
+            elif pe < 35:
+                pe_status = "偏高"
+                pe_color = "#e67e22"
+                pe_analysis = "PE在25-35倍区间，估值偏高，需关注增长预期"
             else:
                 pe_status = "高估"
                 pe_color = "#e74c3c"
+                pe_analysis = "PE超过35倍，估值过高，风险较大"
         else:
             pe_status = "N/A"
             pe_color = "#7f8c8d"
+            pe_analysis = "无PE数据"
+        
+        # PB分析
+        if pb:
+            if pb < 2:
+                pb_status = "低估"
+                pb_analysis = "PB低于2倍，资产估值较低"
+            elif pb < 5:
+                pb_status = "合理"
+                pb_analysis = "PB在2-5倍区间，资产估值合理"
+            else:
+                pb_status = "偏高"
+                pb_analysis = "PB超过5倍，资产估值偏高"
+        else:
+            pb_status = "N/A"
+            pb_analysis = "无PB数据"
         
         return f'''
         <div class="section">
@@ -636,59 +625,52 @@ class ProfessionalStockReporter:
                 <div class="metric-item">
                     <div class="metric-label">P/B 市净率</div>
                     <div class="metric-value">{f"{pb:.2f}" if pb else "N/A"}</div>
-                    <div class="metric-change">{'低估' if pb and pb < 3 else '合理' if pb and pb < 6 else '偏高'}</div>
+                    <div class="metric-change">{pb_status}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">市值</div>
-                    <div class="metric-value">{mc_str}</div>
-                    <div class="metric-change">大盘股</div>
+                    <div class="metric-value" style="font-size: 28px">{mc_str}</div>
+                    <div class="metric-change">{mc_level}</div>
                 </div>
             </div>
             
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>指标</th>
-                        <th>当前值</th>
-                        <th>行业对比</th>
-                        <th>评估</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>ROE</td>
-                        <td>{f"{roe:.1f}%" if roe else "N/A"}</td>
-                        <td>-</td>
-                        <td><strong style="color: {roe_color}">{roe_status}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>P/E</td>
-                        <td>{f"{pe:.1f}" if pe else "N/A"}</td>
-                        <td>-</td>
-                        <td><strong style="color: {pe_color}">{pe_status}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>P/B</td>
-                        <td>{f"{pb:.2f}" if pb else "N/A"}</td>
-                        <td>-</td>
-                        <td>{'低估' if pb and pb < 3 else '合理' if pb and pb < 6 else '偏高'}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="analysis-box">
+                <div class="analysis-title">盈利能力分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>ROE分析：</strong>{roe_analysis}</li>
+                        <li><strong>ROE趋势：</strong>ROE是衡量企业盈利能力的核心指标，持续高于15%通常意味着企业具备护城河</li>
+                        <li><strong>对比行业：</strong>科技行业平均ROE约18%，{'当前ROE高于行业平均' if roe and roe > 18 else '当前ROE低于行业平均' if roe else '无法对比'}</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="analysis-box">
+                <div class="analysis-title">估值水平分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>PE分析：</strong>{pe_analysis}</li>
+                        <li><strong>PB分析：</strong>{pb_analysis}</li>
+                        <li><strong>估值综合判断：</strong>{'估值偏低，具备投资价值' if pe and pe < 20 else '估值合理，可关注' if pe and pe < 30 else '估值偏高，需谨慎' if pe else '数据不足'}</li>
+                    </ul>
+                </div>
+            </div>
             
             <div class="summary-box">
-                <div class="summary-title">📊 基本面小结</div>
+                <div class="summary-title">基本面小结</div>
                 <div class="summary-text">
-                    {'✅ 盈利能力优秀：ROE超过20%，盈利能力极强' if roe and roe > 20 else '⚠️ 盈利能力一般：ROE在10-20%区间' if roe and roe > 10 else '❌ 盈利能力较弱：ROE低于10%'}
+                    {f'✅ 盈利能力{roe_status}：ROE={roe:.1f}%，{roe_analysis}' if roe else '⚠️ 无ROE数据'}
                     <br>
-                    {'✅ 估值合理：PE低于20倍，估值合理' if pe and pe < 20 else '⚠️ 估值偏高：PE在20-30倍区间' if pe and pe < 30 else '❌ 估值过高：PE超过30倍，需注意风险'}
+                    {f'✅ 估值{pe_status}：PE={pe:.1f}倍，{pe_analysis}' if pe and pe < 25 else f'⚠️ 估值{pe_status}：PE={pe:.1f}倍，需关注风险' if pe else '⚠️ 无PE数据'}
+                    <br>
+                    <strong>综合判断：</strong>{'基本面优秀，估值合理，值得关注' if roe and pe and roe > 15 and pe < 25 else '基本面尚可，需进一步分析' if roe and roe > 10 else '基本面较弱，建议谨慎'}
                 </div>
             </div>
         </div>
         '''
     
-    def _build_valuation(self, val: Dict) -> str:
-        """构建估值分析"""
+    def _build_valuation_detailed(self, val: Dict) -> str:
+        """构建详细的估值分析"""
         current = val.get('current_price', 0)
         fair = val.get('fair_value', 0)
         upside = val.get('upside', 0)
@@ -697,14 +679,17 @@ class ProfessionalStockReporter:
             val_status = f"低估 {abs(upside):.0f}%"
             val_signal = "买入机会"
             val_color = "#27ae60"
+            val_class = "bullish"
         elif upside > -20:
             val_status = "合理区间"
             val_signal = "观望"
             val_color = "#f39c12"
+            val_class = "neutral"
         else:
             val_status = f"高估 {abs(upside):.0f}%"
             val_signal = "风险较大"
             val_color = "#e74c3c"
+            val_class = "bearish"
         
         return f'''
         <div class="section">
@@ -717,57 +702,54 @@ class ProfessionalStockReporter:
             </div>
             
             <div class="signal-grid">
-                <div class="signal-card {'bullish' if upside > 0 else 'bearish'}">
+                <div class="signal-card {val_class}">
                     <div class="signal-title">当前价格</div>
                     <div class="signal-value">${current:.2f}</div>
                     <div class="signal-desc">市场价格</div>
                 </div>
-                <div class="signal-card {'bullish' if upside > 0 else 'bearish'}">
+                <div class="signal-card {val_class}">
                     <div class="signal-title">公允价值</div>
                     <div class="signal-value">${fair:.2f}</div>
                     <div class="signal-desc">DCF模型估值</div>
                 </div>
             </div>
             
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>估值指标</th>
-                        <th>值</th>
-                        <th>评估</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>估值状态</td>
-                        <td><strong style="color: {val_color}">{val_status}</strong></td>
-                        <td>{val_signal}</td>
-                    </tr>
-                    <tr>
-                        <td>安全边际</td>
-                        <td>{f"{abs(upside):.1f}%" if upside > 0 else f"-{abs(upside):.1f}%"}</td>
-                        <td>{'具备安全边际' if upside > 0 else '缺乏安全边际'}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="analysis-box">
+                <div class="analysis-title">估值方法说明</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>DCF模型：</strong>基于未来现金流折现计算公允价值，考虑了企业盈利能力和成长性</li>
+                        <li><strong>安全边际：</strong>公允价值vs市场价格，{f'存在{abs(upside):.0f}%上涨空间' if upside > 0 else f'高估{abs(upside):.0f}%，缺乏安全边际'}</li>
+                        <li><strong>估值状态：</strong><span style="color: {val_color}; font-weight: 600;">{val_status}</span>，{val_signal}</li>
+                    </ul>
+                </div>
+            </div>
             
             <div class="summary-box">
-                <div class="summary-title">💡 估值信号</div>
+                <div class="summary-title">估值小结</div>
                 <div class="summary-text">
                     当前价格 ${current:.2f}，公允价值 ${fair:.2f}，
-                    {'存在' + str(abs(upside)) + '%上涨空间，具备投资价值。' if upside > 0 else '高估' + str(abs(upside)) + '%，建议谨慎或观望。'}
+                    {f'存在{abs(upside):.0f}%上涨空间，估值偏低，具备投资价值。' if upside > 0 else f'高估{abs(upside):.0f}%，建议谨慎或等待回调。'}
+                    <br><strong>操作建议：</strong>{'可考虑分批建仓' if upside > 0 else '建议观望或减仓'}
                 </div>
             </div>
         </div>
         '''
     
-    def _build_financial(self, fc: Dict) -> str:
-        """构建财务健康分析"""
+    def _build_financial_detailed(self, fc: Dict) -> str:
+        """构建详细的财务健康分析"""
         risk_level = fc.get('risk_level', 'unknown')
         risk_desc = fc.get('risk_description', 'N/A')
         anomaly_count = fc.get('anomaly_count', 0)
         gross_margin = fc.get('gross_margin', 0)
         net_margin = fc.get('net_margin', 0)
+        
+        # 风险等级（不使用emoji）
+        risk_text = {
+            'low': '低风险',
+            'medium': '中风险',
+            'high': '高风险'
+        }.get(risk_level, '未知')
         
         if risk_level == 'low':
             risk_color = "#27ae60"
@@ -775,6 +757,28 @@ class ProfessionalStockReporter:
             risk_color = "#f39c12"
         else:
             risk_color = "#e74c3c"
+        
+        # 毛利率分析
+        if gross_margin > 50:
+            gm_status = "优秀"
+            gm_analysis = "毛利率超过50%，产品竞争力强，定价权高"
+        elif gross_margin > 30:
+            gm_status = "良好"
+            gm_analysis = "毛利率在30-50%区间，产品有一定竞争力"
+        else:
+            gm_status = "一般"
+            gm_analysis = "毛利率低于30%，产品竞争力较弱"
+        
+        # 净利率分析
+        if net_margin > 20:
+            nm_status = "优秀"
+            nm_analysis = "净利率超过20%，盈利质量极高"
+        elif net_margin > 10:
+            nm_status = "良好"
+            nm_analysis = "净利率在10-20%区间，盈利质量良好"
+        else:
+            nm_status = "一般"
+            nm_analysis = "净利率低于10%，盈利质量一般"
         
         return f'''
         <div class="section">
@@ -789,21 +793,35 @@ class ProfessionalStockReporter:
             <div class="metrics-grid">
                 <div class="metric-item">
                     <div class="metric-label">风险等级</div>
-                    <div class="metric-value" style="font-size: 28px; color: {risk_color}">{risk_desc}</div>
+                    <div class="metric-value" style="font-size: 28px; color: {risk_color}">{risk_text}</div>
+                    <div class="metric-change">{risk_desc}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">异常数量</div>
                     <div class="metric-value">{anomaly_count}</div>
+                    <div class="metric-change">{'无异常' if anomaly_count == 0 else '存在异常'}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">毛利率</div>
                     <div class="metric-value">{gross_margin:.1f}%</div>
-                    <div class="metric-change">{'优秀' if gross_margin > 40 else '良好' if gross_margin > 25 else '一般'}</div>
+                    <div class="metric-change">{gm_status}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">净利率</div>
                     <div class="metric-value">{net_margin:.1f}%</div>
-                    <div class="metric-change">{'优秀' if net_margin > 15 else '良好' if net_margin > 8 else '一般'}</div>
+                    <div class="metric-change">{nm_status}</div>
+                </div>
+            </div>
+            
+            <div class="analysis-box">
+                <div class="analysis-title">财务质量分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>毛利率分析：</strong>{gm_analysis}（当前{gross_margin:.1f}%）</li>
+                        <li><strong>净利率分析：</strong>{nm_analysis}（当前{net_margin:.1f}%）</li>
+                        <li><strong>异常检测：</strong>{f'未发现财务异常，报表质量良好' if anomaly_count == 0 else f'发现{anomaly_count}项财务异常，需关注'} </li>
+                        <li><strong>风险评级：</strong>{risk_text}，{'财务状况稳健' if risk_level == 'low' else '需关注财务风险'}</li>
+                    </ul>
                 </div>
             </div>
             
@@ -812,38 +830,111 @@ class ProfessionalStockReporter:
             </div>
             
             <div class="summary-box">
-                <div class="summary-title">📊 财务小结</div>
+                <div class="summary-title">财务小结</div>
                 <div class="summary-text">
-                    {'✅ 财务健康：无异常信号，盈利质量良好' if risk_level == 'low' and anomaly_count == 0 else '⚠️ 财务风险：' + str(anomaly_count) + '项异常需关注'}
-                    <br>
-                    {'毛利率' + str(gross_margin) + '%，净利率' + str(net_margin) + '%，盈利质量' + ('优秀' if net_margin > 15 else '良好' if net_margin > 8 else '一般') + '。'}
+                    {f'✅ 财务健康：无异常信号，毛利率{gross_margin:.1f}%（{gm_status}），净利率{net_margin:.1f}%（{nm_status}）' if risk_level == 'low' and anomaly_count == 0 else f'⚠️ 财务风险：{anomaly_count}项异常需关注'}
+                    <br><strong>综合判断：</strong>{'财务状况稳健，可正常投资' if risk_level == 'low' else '财务存在风险，建议谨慎'}
                 </div>
             </div>
         </div>
         '''
     
-    def _build_technical(self, tech: Dict, enhancer) -> str:
-        """构建技术分析"""
+    def _build_technical_detailed(self, tech: Dict, entry_signals: Dict, enhancer) -> str:
+        """构建详细的技术分析"""
         trend = tech.get('trend', 'N/A')
         rsi = tech.get('rsi', 50)
         macd = tech.get('macd_status', 'N/A')
         
         # RSI分析
-        if rsi > 70:
+        if rsi > 80:
+            rsi_status = "严重超买"
+            rsi_color = "#e74c3c"
+            rsi_signal = "强烈卖出"
+            rsi_analysis = "RSI超过80，严重超买，短期极可能回调"
+        elif rsi > 70:
             rsi_status = "超买"
             rsi_color = "#e74c3c"
             rsi_signal = "卖出"
+            rsi_analysis = "RSI超过70，超买区域，短期可能回调"
+        elif rsi < 20:
+            rsi_status = "严重超卖"
+            rsi_color = "#27ae60"
+            rsi_signal = "强烈买入"
+            rsi_analysis = "RSI低于20，严重超卖，短期可能反弹"
         elif rsi < 30:
             rsi_status = "超卖"
             rsi_color = "#27ae60"
             rsi_signal = "买入"
+            rsi_analysis = "RSI低于30，超卖区域，短期可能反弹"
         else:
             rsi_status = "中性"
             rsi_color = "#f39c12"
             rsi_signal = "观望"
+            rsi_analysis = "RSI在30-70区间，市场处于中性状态"
         
         # MACD分析
-        macd_signal = "买入" if "金叉" in macd else "卖出" if "死叉" in macd else "观望"
+        if '金叉' in macd:
+            macd_status = "看涨"
+            macd_color = "#27ae60"
+            macd_analysis = "MACD金叉，短期趋势向上，买入信号"
+        elif '死叉' in macd:
+            macd_status = "看跌"
+            macd_color = "#e74c3c"
+            macd_analysis = "MACD死叉，短期趋势向下，卖出信号"
+        else:
+            macd_status = "中性"
+            macd_color = "#f39c12"
+            macd_analysis = "MACD无明显信号"
+        
+        # 趋势分析
+        if '多头' in trend:
+            trend_status = "上升趋势"
+            trend_color = "#27ae60"
+            trend_analysis = "当前处于上升趋势，建议顺势操作"
+        elif '空头' in trend:
+            trend_status = "下降趋势"
+            trend_color = "#e74c3c"
+            trend_analysis = "当前处于下降趋势，建议谨慎"
+        else:
+            trend_status = "震荡"
+            trend_color = "#f39c12"
+            trend_analysis = "当前处于震荡状态，建议观望"
+        
+        # 入场信号部分
+        signals_html = ""
+        if entry_signals and entry_signals.get('signals'):
+            signals_html = '''
+            <div class="analysis-box">
+                <div class="analysis-title">高置信度入场信号</div>
+                <div class="analysis-text">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>信号名称</th>
+                                <th>历史成功率</th>
+                                <th>置信度</th>
+                                <th>操作建议</th>
+                                <th>风险等级</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            '''
+            for sig in entry_signals['signals']:
+                signals_html += f'''
+                            <tr>
+                                <td><strong>{sig['name']}</strong></td>
+                                <td style="color: {'#27ae60' if sig['success_rate'] > 0.7 else '#f39c12' if sig['success_rate'] > 0.5 else '#e74c3c'}; font-weight: 600;">{sig['success_rate']*100:.0f}%</td>
+                                <td>{sig['confidence']*100:.0f}%</td>
+                                <td>{sig['action']}</td>
+                                <td>{sig['risk_level']}</td>
+                            </tr>
+                '''
+            signals_html += '''
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            '''
         
         return f'''
         <div class="section">
@@ -858,7 +949,8 @@ class ProfessionalStockReporter:
             <div class="metrics-grid">
                 <div class="metric-item">
                     <div class="metric-label">趋势</div>
-                    <div class="metric-value" style="font-size: 28px">{trend}</div>
+                    <div class="metric-value" style="font-size: 24px; color: {trend_color}">{trend_status}</div>
+                    <div class="metric-change">{trend}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">RSI</div>
@@ -867,40 +959,55 @@ class ProfessionalStockReporter:
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">MACD</div>
-                    <div class="metric-value" style="font-size: 28px">{macd}</div>
-                    <div class="metric-change">{'看涨' if '金叉' in macd else '看跌' if '死叉' in macd else '中性'}</div>
+                    <div class="metric-value" style="font-size: 24px">{macd}</div>
+                    <div class="metric-change" style="color: {macd_color}">{macd_status}</div>
                 </div>
             </div>
             
-            <div class="signal-grid">
-                <div class="signal-card {'bullish' if rsi_signal == '买入' else 'bearish'}">
-                    <div class="signal-title">RSI 信号</div>
-                    <div class="signal-value">{rsi_status}</div>
-                    <div class="signal-desc">RSI={rsi:.1f}，{rsi_signal}信号</div>
-                </div>
-                <div class="signal-card {'bullish' if macd_signal == '买入' else 'bearish'}">
-                    <div class="signal-title">MACD 信号</div>
-                    <div class="signal-value">{macd}</div>
-                    <div class="signal-desc">{macd_signal}信号</div>
+            <div class="analysis-box">
+                <div class="analysis-title">技术指标分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>趋势判断：</strong>{trend_analysis}</li>
+                        <li><strong>RSI分析：</strong>{rsi_analysis}（当前RSI={rsi:.1f}）</li>
+                        <li><strong>MACD分析：</strong>{macd_analysis}</li>
+                    </ul>
                 </div>
             </div>
+            
+            {signals_html}
             
             <div class="summary-box">
-                <div class="summary-title">📊 技术小结</div>
+                <div class="summary-title">技术小结</div>
                 <div class="summary-text">
-                    RSI {rsi:.1f}，{rsi_status}。MACD {macd}，提供{macd_signal}信号。
+                    RSI {rsi:.1f}，{rsi_status}。MACD {macd}，{macd_status}。趋势：{trend}。
+                    <br><strong>综合信号：</strong>{'技术面偏多，可考虑入场' if rsi_signal == '买入' or macd_status == '看涨' else '技术面偏空，建议观望' if rsi_signal == '卖出' or macd_status == '看跌' else '技术面中性，等待明确信号'}
                     <br><strong>注意：</strong>技术分析仅作择时参考，投资决策应以基本面为主。
                 </div>
             </div>
         </div>
         '''
     
-    def _build_sentiment(self, sent: Dict) -> str:
-        """构建市场情绪"""
+    def _build_sentiment_detailed(self, sent: Dict) -> str:
+        """构建详细的市场情绪"""
         status = sent.get('status', 'neutral')
         description = sent.get('description', '中性')
         bullish_pct = sent.get('bullish_pct', 50)
         alignment = sent.get('alignment', 'local')
+        
+        # 情绪状态（不使用emoji）
+        sentiment_text = {
+            'positive': '看涨',
+            'negative': '看跌',
+            'neutral': '中性'
+        }.get(status, '中性')
+        
+        if status == 'positive':
+            sent_color = "#27ae60"
+        elif status == 'negative':
+            sent_color = "#e74c3c"
+        else:
+            sent_color = "#f39c12"
         
         source_map = {
             'local': '基于新闻标题的TextBlob情感分析',
@@ -922,7 +1029,7 @@ class ProfessionalStockReporter:
             <div class="metrics-grid">
                 <div class="metric-item">
                     <div class="metric-label">情绪状态</div>
-                    <div class="metric-value" style="font-size: 28px">{description}</div>
+                    <div class="metric-value" style="font-size: 28px; color: {sent_color}">{sentiment_text}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">看涨比例</div>
@@ -931,24 +1038,43 @@ class ProfessionalStockReporter:
                 </div>
             </div>
             
+            <div class="analysis-box">
+                <div class="analysis-title">情绪分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>当前情绪：</strong>{description}，{sentiment_text}</li>
+                        <li><strong>多空对比：</strong>看涨{bullish_pct:.0f}% vs 看跌{100-bullish_pct:.0f}%</li>
+                        <li><strong>情绪判断：</strong>{'市场情绪偏乐观，短期可能上涨' if status == 'positive' else '市场情绪偏悲观，短期可能下跌' if status == 'negative' else '市场情绪中性，短期震荡为主'}</li>
+                    </ul>
+                </div>
+            </div>
+            
             <div class="data-source">
                 <strong>数据来源：</strong>{source}
             </div>
             
             <div class="summary-box">
-                <div class="summary-title">📊 情绪小结</div>
+                <div class="summary-title">情绪小结</div>
                 <div class="summary-text">
                     当前市场情绪{description}，{'短期可能上涨' if status == 'positive' else '短期可能下跌' if status == 'negative' else '短期震荡为主'}。
+                    <br><strong>注意：</strong>情绪仅影响短期波动，不改变长期价值。
                 </div>
             </div>
         </div>
         '''
     
-    def _build_regulation(self, reg: Dict) -> str:
-        """构建监管风险"""
+    def _build_regulation_detailed(self, reg: Dict) -> str:
+        """构建详细的监管风险"""
         risk_score = reg.get('risk_score', 0)
         risk_level = reg.get('risk_level', 'unknown')
         risk_desc = reg.get('risk_description', 'N/A')
+        
+        # 风险等级（不使用emoji）
+        risk_text = {
+            'low': '低风险',
+            'medium': '中风险',
+            'high': '高风险'
+        }.get(risk_level, '未知')
         
         if risk_level == 'low':
             risk_color = "#27ae60"
@@ -974,7 +1100,18 @@ class ProfessionalStockReporter:
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">风险等级</div>
-                    <div class="metric-value" style="font-size: 28px; color: {risk_color}">{risk_desc}</div>
+                    <div class="metric-value" style="font-size: 28px; color: {risk_color}">{risk_text}</div>
+                </div>
+            </div>
+            
+            <div class="analysis-box">
+                <div class="analysis-title">监管环境分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>风险评级：</strong>{risk_text}</li>
+                        <li><strong>风险描述：</strong>{risk_desc}</li>
+                        <li><strong>投资影响：</strong>{'监管环境稳定，可正常投资' if risk_level == 'low' else '存在监管风险，需关注政策动态'}</li>
+                    </ul>
                 </div>
             </div>
             
@@ -983,7 +1120,7 @@ class ProfessionalStockReporter:
             </div>
             
             <div class="summary-box">
-                <div class="summary-title">📊 监管小结</div>
+                <div class="summary-title">监管小结</div>
                 <div class="summary-text">
                     {risk_desc}，{'可正常投资' if risk_level == 'low' else '建议关注政策动态'}。
                 </div>
@@ -991,15 +1128,30 @@ class ProfessionalStockReporter:
         </div>
         '''
     
-    def _build_research(self, dr: Dict) -> str:
-        """构建深度研报 - 仅当有详细内容时显示"""
+    def _build_research_detailed(self, dr: Dict) -> str:
+        """构建详细的深度研报"""
         rating = dr.get('rating', 'N/A')
         score = dr.get('score', 0)
         recommendation = dr.get('recommendation', 'N/A')
         
-        # 只有当有实际数据时才输出
-        if not rating or score == 0:
-            return ''
+        # 评级解读（不使用emoji）
+        rating_text = {
+            '🟢🟢🟢🟢🟢': '强烈推荐',
+            '🟢🟢🟢🟢': '推荐',
+            '🟡🟡🟡': '中性',
+            '🔴🔴': '谨慎',
+            '🔴🔴🔴': '不推荐'
+        }.get(rating, '待评估')
+        
+        if score >= 4:
+            score_status = "优秀"
+            score_color = "#27ae60"
+        elif score >= 3:
+            score_status = "良好"
+            score_color = "#f39c12"
+        else:
+            score_status = "一般"
+            score_color = "#e74c3c"
         
         return f'''
         <div class="section">
@@ -1014,24 +1166,35 @@ class ProfessionalStockReporter:
             <div class="metrics-grid">
                 <div class="metric-item">
                     <div class="metric-label">研报评级</div>
-                    <div class="metric-value" style="font-size: 40px">{rating}</div>
+                    <div class="metric-value" style="font-size: 28px; color: {score_color}">{rating_text}</div>
                 </div>
                 <div class="metric-item">
                     <div class="metric-label">研报评分</div>
                     <div class="metric-value">{score}/5</div>
-                    <div class="metric-change">{'优秀' if score >= 4 else '良好' if score >= 3 else '一般'}</div>
+                    <div class="metric-change" style="color: {score_color}">{score_status}</div>
+                </div>
+            </div>
+            
+            <div class="analysis-box">
+                <div class="analysis-title">研报详细分析</div>
+                <div class="analysis-text">
+                    <ul>
+                        <li><strong>综合评级：</strong>{rating_text}（{rating}）</li>
+                        <li><strong>评分分析：</strong>{score}/5分，{score_status}</li>
+                        <li><strong>投资建议：</strong>{recommendation}</li>
+                    </ul>
                 </div>
             </div>
             
             <div class="summary-box">
-                <div class="summary-title">📊 研报小结</div>
+                <div class="summary-title">研报小结</div>
                 <div class="summary-text">{recommendation}</div>
             </div>
         </div>
         '''
     
-    def _build_overall(self, sections: Dict, enhancer) -> str:
-        """构建全局观点"""
+    def _build_overall_detailed(self, sections: Dict, enhancer) -> str:
+        """构建详细的全局观点"""
         
         return f'''
         <div class="section">
@@ -1047,59 +1210,44 @@ class ProfessionalStockReporter:
                 <div class="advice-card short">
                     <div class="advice-label">短线投资者</div>
                     <div class="advice-action">观望</div>
-                    <div class="advice-reason">RSI超买，短线不宜追高</div>
+                    <div class="advice-reason">RSI超买，短线不宜追高。建议等待回调至RSI<60再考虑入场。</div>
                     <div class="advice-button">等待回调</div>
                 </div>
                 <div class="advice-card medium">
                     <div class="advice-label">波段投资者</div>
                     <div class="advice-action">减仓</div>
-                    <div class="advice-reason">估值高估72%，中期风险大</div>
+                    <div class="advice-reason">估值高估，中期风险较大。建议逐步减仓，控制仓位在50%以下。</div>
                     <div class="advice-button">逐步减仓</div>
                 </div>
                 <div class="advice-card long">
                     <div class="advice-label">长线投资者</div>
                     <div class="advice-action">持有</div>
-                    <div class="advice-reason">ROE优秀，优质企业</div>
+                    <div class="advice-reason">ROE优秀，优质企业。长期看好，建议定期定额投资。</div>
                     <div class="advice-button">定期定额</div>
                 </div>
             </div>
         </div>
         
         <div class="risk-section">
-            <div class="risk-title">⚠️ 风险提示</div>
+            <div class="risk-title">风险提示</div>
             <div class="risk-text">
                 本报告仅供参考，不构成投资建议。投资有风险，入市需谨慎。
                 <br><br>
                 报告中的分析基于公开数据，可能存在滞后性或不完整性。投资者应结合自身情况独立判断，并注意以下风险：
-                <br>
-                1. 市场风险：股票价格可能因市场情绪、宏观经济等因素大幅波动
-                <br>
-                2. 基本面风险：公司经营状况可能发生变化
-                <br>
-                3. 流动性风险：市场流动性不足可能导致买卖困难
-            </div>
-        </div>
-        '''
-    
-    def _build_footer(self) -> str:
-        """构建页脚"""
-        return f'''
-        <div class="footer">
-            <div class="footer-text">
-                报告由 Neo9527 Finance Agent v6.3 生成
-                <br>
-                本报告基于公开数据分析，仅供参考
+                <br>1. 市场风险：股票价格可能因市场情绪、宏观经济等因素大幅波动
+                <br>2. 基本面风险：公司经营状况可能发生变化
+                <br>3. 流动性风险：市场流动性不足可能导致买卖困难
+                <br>4. 估值风险：估值模型存在假设，实际价值可能偏离
             </div>
         </div>
         '''
 
 
-# 便捷函数
-def generate_professional_report(report: Dict, enhancer=None) -> str:
-    """生成专业HTML报告"""
-    reporter = ProfessionalStockReporter()
+def generate_complete_report(report: Dict, enhancer=None) -> str:
+    """生成完整HTML报告"""
+    reporter = CompleteStockReporter()
     return reporter.generate(report, enhancer)
 
 
 if __name__ == '__main__':
-    print("专业股票HTML报告生成器 v2.0")
+    print("完整版股票报告生成器 v3.0")
