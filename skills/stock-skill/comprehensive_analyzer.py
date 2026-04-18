@@ -430,7 +430,7 @@ class ComprehensiveStockAnalyzer:
         print("\n【7/12】板块联动分析...")
         if self.correlation:
             try:
-n                # 获取同行业股票列表
+                # 获取同行业股票列表
                 industry_peers = {
                     'AAPL': ['MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA'],
                     'MSFT': ['AAPL', 'GOOGL', 'AMZN', 'META', 'NVDA'],
