@@ -180,6 +180,36 @@ def cmd_research(args):
     print(f"建议: {result['rating']['recommendation']}")
 
 
+def cmd_board(args):
+    """打板筛选"""
+    import importlib.util
+    
+    spec = importlib.util.spec_from_file_location(
+        "board_scanner",
+        os.path.join(SKILLS_DIR, 'scripts', 'features', 'board_scanner.py')
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    
+    scan_type = args.type
+    print(f"\n🎯 打板筛选 ({scan_type})...")
+    
+    if scan_type == 'limit-up':
+        result = module.scan_limit_up()
+    elif scan_type == 'strong':
+        result = module.scan_strong_stocks()
+    elif scan_type == 'continuous':
+        result = module.scan_continuous_boards()
+    elif scan_type == 'market':
+        result = module.analyze_market_sentiment()
+    elif scan_type == 'opportunities':
+        result = module.identify_opportunities()
+    else:
+        result = module.analyze_market_sentiment()
+    
+    print(f"\n结果: {result}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Neo9527 Finance CLI - 统一金融分析工具',
@@ -217,6 +247,14 @@ def main():
     parser_research.add_argument('--style', choices=['value', 'growth', 'turnaround', 'dividend'], help='投资风格')
     parser_research.add_argument('--depth', choices=['quick', 'standard', 'deep'], help='分析深度')
     parser_research.set_defaults(func=cmd_research)
+    
+    # board 命令 (打板筛选)
+    parser_board = subparsers.add_parser('board', help='打板筛选 (短线)')
+    parser_board.add_argument('--type', 
+        choices=['limit-up', 'strong', 'continuous', 'market', 'opportunities'],
+        default='market',
+        help='筛选类型: limit-up(涨停板), strong(强势股), continuous(连板), market(市场情绪), opportunities(打板机会)')
+    parser_board.set_defaults(func=cmd_board)
     
     args = parser.parse_args()
     
