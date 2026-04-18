@@ -28,6 +28,12 @@ try:
 except ImportError:
     AKSHARE_AVAILABLE = False
 
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+
 
 class FinancialAnomalyDetector:
     """财务异常检测器"""
@@ -142,8 +148,29 @@ class FinancialAnomalyDetector:
     
     def _get_financial_data(self, symbol: str) -> Optional[Dict]:
         """获取财务数据"""
+        # 判断市场
+        if symbol.isdigit():
+            market = 'cn'
+        else:
+            market = 'us'
+        
+        # 美股使用 yfinance
+        if market == 'us':
+            return self._get_us_financial_data(symbol)
+        
         data = {}
         
+        # 判断市场
+        if symbol.isdigit():
+            market = 'cn'
+        else:
+            market = 'us'
+        
+        # 美股使用 yfinance
+        if market == 'us':
+            return self._get_us_financial_data(symbol)
+        
+        # A股使用 AkShare
         try:
             # 方法1: 使用利润表数据 (更可靠)
             df_profit = ak.stock_financial_report_sina(stock=symbol, symbol="利润表")
@@ -431,6 +458,117 @@ class FinancialAnomalyDetector:
             'high': '🔴 高风险：存在多项异常或严重异常，需警惕'
         }
         return descriptions.get(risk_level, '未知风险等级')
+    
+    def _get_us_financial_data(self, symbol: str) -> Optional[Dict]:
+        """获取美股财务数据"""
+        if not YFINANCE_AVAILABLE:
+            print("  yfinance 未安装")
+            return None
+        
+        try:
+            print(f"  获取美股财务数据: {symbol}")
+            ticker = yf.Ticker(symbol)
+            
+            # 获取财务报表
+            income_stmt = ticker.income_stmt
+            balance_sheet = ticker.balance_sheet
+            cash_flow = ticker.cashflow
+            
+            if income_stmt.empty:
+                print("  无法获取利润表")
+                return None
+            
+            # 取最近3年数据
+            data = {
+                'revenue_growth': [],
+                'profit_growth': [],
+                'receivable_growth': [],
+                'inventory_growth': [],
+                'gross_margin': [],
+                'net_margin': []
+            }
+            
+            # 营收和利润
+            if 'Total Revenue' in income_stmt.index:
+                revenues = income_stmt.loc['Total Revenue'].tolist()[:3]
+            elif 'Revenue' in income_stmt.index:
+                revenues = income_stmt.loc['Revenue'].tolist()[:3]
+            else:
+                revenues = []
+            
+            if 'Net Income' in income_stmt.index:
+                profits = income_stmt.loc['Net Income'].tolist()[:3]
+            else:
+                profits = []
+            
+            # 计算增长率
+            if len(revenues) >= 2:
+                for i in range(len(revenues)-1):
+                    if revenues[i+1] and revenues[i+1] > 0:
+                        growth = (revenues[i] - revenues[i+1]) / revenues[i+1] * 100
+                        data['revenue_growth'].append(growth)
+            
+            if len(profits) >= 2:
+                for i in range(len(profits)-1):
+                    if profits[i+1] and profits[i+1] > 0:
+                        growth = (profits[i] - profits[i+1]) / profits[i+1] * 100
+                        data['profit_growth'].append(growth)
+            
+            # 毛利率和净利率
+            if 'Gross Profit' in income_stmt.index and revenues:
+                gross_profits = income_stmt.loc['Gross Profit'].tolist()[:len(revenues)]
+                for gp, rev in zip(gross_profits, revenues):
+                    if rev and rev > 0 and gp:
+                        data['gross_margin'].append(gp / rev * 100)
+            
+            if profits and revenues:
+                for p, r in zip(profits, revenues):
+                    if r and r > 0 and p:
+                        data['net_margin'].append(p / r * 100)
+            
+            # 应收账款
+            if not balance_sheet.empty and 'Net Receivables' in balance_sheet.index:
+                receivables = balance_sheet.loc['Net Receivables'].tolist()[:3]
+                if len(receivables) >= 2 and revenues:
+                    for i in range(len(receivables)-1):
+                        if receivables[i+1] and receivables[i+1] > 0:
+                            growth = (receivables[i] - receivables[i+1]) / receivables[i+1] * 100
+                            data['receivable_growth'].append(growth)
+            
+            # 存货
+            if not balance_sheet.empty and 'Inventory' in balance_sheet.index:
+                inventory = balance_sheet.loc['Inventory'].tolist()[:3]
+                if len(inventory) >= 2 and revenues:
+                    for i in range(len(inventory)-1):
+                        if inventory[i+1] and inventory[i+1] > 0:
+                            growth = (inventory[i] - inventory[i+1]) / inventory[i+1] * 100
+                            data['inventory_growth'].append(growth)
+            
+            # 填充默认值
+            for key in data:
+                if not data[key]:
+                    data[key] = [0, 0, 0]
+            
+            # 摘要
+            data['summary'] = {
+                'gross_margin': data['gross_margin'][0] if data['gross_margin'] else 0,
+                'net_margin': data['net_margin'][0] if data['net_margin'] else 0,
+                'roe': 0,
+                'debt_ratio': 0,
+            }
+            
+            # 获取 ROE
+            if not balance_sheet.empty and 'Stockholders Equity' in balance_sheet.index:
+                equity = balance_sheet.loc['Stockholders Equity'].tolist()
+                if equity and equity[0] and profits and profits[0]:
+                    data['summary']['roe'] = profits[0] / equity[0] * 100
+            
+            print(f"  美股财务数据获取成功")
+            return data
+            
+        except Exception as e:
+            print(f"  美股数据获取失败: {e}")
+            return None
 
 
 # 快速使用函数
