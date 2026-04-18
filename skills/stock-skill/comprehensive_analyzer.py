@@ -330,14 +330,19 @@ class ComprehensiveStockAnalyzer:
         # 估值
         if 'valuation' in sections:
             val = sections['valuation']
-            if val['upside'] > 30:
-                val_score = 90
-            elif val['upside'] > 10:
-                val_score = 70
-            elif val['upside'] > 0:
-                val_score = 50
+            upside = val['upside']
+            if upside > 30:
+                val_score = 90  # 大幅低估
+            elif upside > 10:
+                val_score = 70  # 适度低估
+            elif upside > 0:
+                val_score = 50  # 合理区间
+            elif upside > -20:
+                val_score = 30  # 适度高估
+            elif upside > -50:
+                val_score = 15  # 明显高估
             else:
-                val_score = 30
+                val_score = 5   # 严重高估
             score += val_score * weights['valuation']
         
         # 情绪
@@ -445,14 +450,19 @@ class ComprehensiveStockAnalyzer:
         # 估值
         if 'valuation' in report['sections']:
             val = report['sections']['valuation']
-            md += f"""### 4. 估值分析 💰
+            upside = val['upside']
+            if upside > 0:
+                upside_desc = f"上涨空间 {upside:.1f}%"
+            else:
+                upside_desc = f"高估幅度 {abs(upside):.1f}%"
+            md += f"""### 4. 估值分析
 
 | 指标 | 值 |
 |------|------|
 | 当前价格 | ${val['current_price']:.2f} |
 | 公允价值 | ${val['fair_value']:.2f} |
 | 安全价格 | ${val['safe_price']:.2f} |
-| 上涨空间 | {val['upside']:.1f}% |
+| 估值评估 | {upside_desc} |
 
 """
         
@@ -476,7 +486,7 @@ class ComprehensiveStockAnalyzer:
         # 情绪
         if 'sentiment' in report['sections']:
             sent = report['sections']['sentiment']
-            md += f"""### 5. 市场情绪
+            md += f"""### 6. 市场情绪
 
 | 指标 | 值 |
 |------|------|
@@ -488,10 +498,24 @@ class ComprehensiveStockAnalyzer:
 
 """
         
+        # 监管风险
+        if 'regulation' in report['sections']:
+            reg = report['sections']['regulation']
+            md += f"""### 7. 监管风险
+
+| 指标 | 值 |
+|------|------|
+| 风险评分 | {reg['risk_score']}/100 |
+| 风险等级 | {reg['risk_level']} |
+| 风险描述 | {reg['risk_description']} |
+| 警报数量 | {reg['alerts_count']} |
+
+"""
+        
         # 深度研报
         if 'deep_research' in report['sections']:
             dr = report['sections']['deep_research']
-            md += f"""### 6. 深度研报 📑
+            md += f"""### 8. 深度研报
 
 | 指标 | 值 |
 |------|------|
