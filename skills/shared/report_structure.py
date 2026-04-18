@@ -219,26 +219,26 @@ def generate_structured_report(report: Dict, enhancer) -> str:
         else:
             md += f"- ⚠️ **财务风险**: {anomaly_count}项异常需关注\n"
     
-    # ===== 4. 技术分析 =====
-    md += """---
+        # ===== 4. 技术分析 =====
+        md += """---
 
 ## 第四部分：技术分析（择时参考）
 
 > 技术分析辅助择时，不改变投资方向。
 
 """
-    
-    if 'technical' in sections:
-        tech = sections['technical']
-        trend = tech.get('trend', 'N/A')
-        rsi = tech.get('rsi', 50)
-        macd = tech.get('macd_status', 'N/A')
         
-        rsi_interp = enhancer.interpret_rsi(rsi)
-        trend_interp = enhancer.interpret_trend(trend, rsi)
-        patterns = enhancer.get_technical_patterns(sections)
-        
-        md += f"""### 4.1 趋势判断
+        if 'technical' in sections:
+            tech = sections['technical']
+            trend = tech.get('trend', 'N/A')
+            rsi = tech.get('rsi', 50)
+            macd = tech.get('macd_status', 'N/A')
+            
+            rsi_interp = enhancer.interpret_rsi(rsi)
+            trend_interp = enhancer.interpret_trend(trend, rsi)
+            patterns = enhancer.get_technical_patterns(sections)
+            
+            md += f"""### 4.1 趋势判断
 
 **趋势**: {trend}
 
@@ -254,9 +254,20 @@ def generate_structured_report(report: Dict, enhancer) -> str:
 ### 4.3 技术形态
 
 """
-        if patterns:
-            for p in patterns:
-                md += f"- **{p['name']}**: {p['description']} ({p['signal']})\n"
+            if patterns:
+                for p in patterns:
+                    md += f"- **{p['name']}**: {p['description']} ({p['signal']})\n"
+            else:
+                md += "- 无明显技术形态\n"
+            
+            md += f"""
+### 4.4 技术小结
+
+{rsi_interp['description']}。{'MACD金叉提供买入信号。' if '金叉' in macd else 'MACD死叉发出卖出信号。' if '死叉' in macd else ''}
+
+**注意**: 技术分析仅作择时参考，投资决策应以基本面为主。
+
+"""
         else:
             md += "- 无明显技术形态\n"
         
@@ -287,11 +298,21 @@ def generate_structured_report(report: Dict, enhancer) -> str:
         
         # 数据来源说明
         source_map = {
-            'local': '新闻标题关键词分析（本地模型）',
-            'adanos': 'Adanos API（多数据源）',
-            'news': '新闻情感分析'
+            'local': '基于新闻标题的TextBlob情感分析（本地模型）',
+            'adanos': 'Adanos多数据源聚合API',
+            'news': '新闻情感分析',
+            'reddit': 'Reddit社区情绪',
+            'twitter': 'Twitter/X社交情绪'
         }
-        source_desc = source_map.get(alignment, '未知来源')
+        source_desc = source_map.get(alignment, '本地分析')
+        
+        # 判断方法说明
+        method_desc = {
+            'local': '通过新闻标题关键词分析，使用TextBlob库计算情感极性',
+            'adanos': '聚合多个数据源的实时情绪数据',
+            'news': '分析相关新闻标题的情感倾向'
+        }
+        method = method_desc.get(alignment, '本地关键词分析')
         
         md += f"""### 5.1 情绪指标
 
@@ -301,6 +322,8 @@ def generate_structured_report(report: Dict, enhancer) -> str:
 | 看涨比例 | {bullish_pct:.0f}% | {'多头占优' if bullish_pct > 60 else '空头占优' if bullish_pct < 40 else '多空平衡'} |
 
 **数据来源**: {source_desc}
+
+**判断方法**: {method}
 
 ### 5.2 情绪小结
 
@@ -325,7 +348,18 @@ def generate_structured_report(report: Dict, enhancer) -> str:
         alerts = reg.get('alerts_count', 0)
         
         # 监管来源说明
-        reg_source = "CSRC(证监会)/PBOC(央行)/NFRA(金监总局)公开信息"
+        reg_source = "中国证监会(CSRC)、人民银行(PBOC)、国家金融监督管理总局(NFRA)公开公告"
+        
+        # 监控方法
+        reg_method = "实时监控三大监管机构官方网站公告、政策文件、处罚决定"
+        
+        # 风险评级说明
+        risk_explain = {
+            'low': '近期无重大监管政策变化或处罚公告',
+            'medium': '存在政策调整或行业监管动态',
+            'high': '存在重大处罚或政策风险'
+        }
+        risk_detail = risk_explain.get(risk_level, '风险等级未知')
         
         md += f"""### 6.1 风险评估
 
@@ -336,6 +370,10 @@ def generate_structured_report(report: Dict, enhancer) -> str:
 | 监管警报 | {alerts}条 | {'无监管警报' if alerts == 0 else f'存在{alerts}条监管警报'} |
 
 **数据来源**: {reg_source}
+
+**监控方法**: {reg_method}
+
+**评级说明**: {risk_detail}
 
 ### 6.2 监管小结
 

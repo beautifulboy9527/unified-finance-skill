@@ -225,27 +225,9 @@ class ComprehensiveStockAnalyzer:
             except Exception as e:
                 print(f"   ❌ 失败: {e}")
         
-        # 5. 新闻分析
-        print("\n【5/8】新闻分析...")
-        if self.news:
-            try:
-                # 尝试获取新闻
-                result = self.news.get_financial_brief()
-                if result and 'brief' in result:
-                    brief = result['brief']
-                    report['sections']['news'] = {
-                        'available': True,
-                        'total_news': brief.get('total_news', 0),
-                        'sources': brief.get('sources', {}),
-                        'headlines': brief.get('headlines', [])[:5]  # 前5条
-                    }
-                    print(f"   ✅ 新闻数据已获取")
-                    print(f"   ✅ 新闻总数: {brief.get('total_news', 0)}")
-                    print(f"   ✅ 来源: {brief.get('sources', {})}")
-            except Exception as e:
-                print(f"   ⚠️ 新闻获取失败: {str(e)[:50]}")
-        else:
-            print(f"   ⚠️ 新闻模块未加载")
+        # 5. 新闻分析 (用于选股，不用于个股分析)
+        # 注: 新闻分析改为选股筛选使用，个股报告不再包含
+        print("\n【5/8】新闻分析... (已跳过，用于选股)")
         
         # 6. 情绪分析
         print("\n【6/8】市场情绪...")
