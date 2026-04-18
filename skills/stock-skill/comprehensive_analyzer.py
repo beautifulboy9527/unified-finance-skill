@@ -204,36 +204,44 @@ class ComprehensiveStockAnalyzer:
                 print(f"   ❌ 失败: {e}")
         
         # 5. 新闻分析
-        print("\n【5/7】新闻分析...")
+        print("\n【5/8】新闻分析...")
         if self.news:
             try:
                 # 尝试获取新闻
                 result = self.news.get_financial_brief()
-                if result:
+                if result and 'brief' in result:
+                    brief = result['brief']
                     report['sections']['news'] = {
                         'available': True,
-                        'brief': str(result)[:500] if result else 'N/A'
+                        'total_news': brief.get('total_news', 0),
+                        'sources': brief.get('sources', {}),
+                        'headlines': brief.get('headlines', [])[:5]  # 前5条
                     }
                     print(f"   ✅ 新闻数据已获取")
+                    print(f"   ✅ 新闻总数: {brief.get('total_news', 0)}")
+                    print(f"   ✅ 来源: {brief.get('sources', {})}")
             except Exception as e:
                 print(f"   ⚠️ 新闻获取失败: {str(e)[:50]}")
         else:
             print(f"   ⚠️ 新闻模块未加载")
         
         # 6. 情绪分析
-        print("\n【6/7】市场情绪...")
+        print("\n【6/8】市场情绪...")
         if self.sentiment:
             try:
                 result = self.sentiment.analyze_sentiment(symbol)
-                if result and result.get('success'):
+                if result and ('sentiment' in result or 'avg_bullish_pct' in result):
                     report['sections']['sentiment'] = {
-                        'score': result.get('sentiment_score', 0),
-                        'bullish_pct': result.get('bullish_percentage', 0),
-                        'bearish_pct': result.get('bearish_percentage', 0),
-                        'status': result.get('sentiment_status', 'N/A')
+                        'score': result.get('avg_bullish_pct', result.get('sentiment_score', 50)),
+                        'bullish_pct': result.get('avg_bullish_pct', result.get('bullish_percentage', 50)),
+                        'bearish_pct': 100 - result.get('avg_bullish_pct', result.get('bullish_percentage', 50)),
+                        'status': result.get('sentiment', 'neutral'),
+                        'description': result.get('sentiment_description', 'N/A'),
+                        'alignment': result.get('alignment', 'local')
                     }
-                    print(f"   ✅ 情绪评分: {result.get('sentiment_score', 0):.1f}/100")
-                    print(f"   ✅ 看涨: {result.get('bullish_percentage', 0):.0f}%")
+                    print(f"   ✅ 情绪状态: {result.get('sentiment', 'N/A')}")
+                    print(f"   ✅ 看涨比例: {result.get('avg_bullish_pct', 0):.1f}%")
+                    print(f"   ✅ 数据来源: {result.get('alignment', 'local')}")
             except Exception as e:
                 print(f"   ⚠️ 情绪分析失败: {str(e)[:50]}")
         else:
@@ -448,17 +456,35 @@ class ComprehensiveStockAnalyzer:
 
 """
         
-        # 情绪
-        if 'sentiment' in report['sections']:
-            sent = report['sections']['sentiment']
-            md += f"""### 5. 市场情绪 😊
+        # 新闻
+        if 'news' in report['sections']:
+            news = report['sections']['news']
+            md += f"""### 5. 新闻分析
 
 | 指标 | 值 |
 |------|------|
-| 情绪评分 | {sent['score']:.1f}/100 |
-| 看涨比例 | {sent['bullish_pct']:.0f}% |
-| 看跌比例 | {sent['bearish_pct']:.0f}% |
-| 状态 | {sent['status']} |
+| 新闻总数 | {news.get('total_news', 0)} |
+| 数据来源 | {news.get('sources', {})} |
+
+"""
+            if news.get('headlines'):
+                md += "**头条新闻**:\n"
+                for h in news['headlines'][:3]:
+                    md += f"- {h}\n"
+                md += "\n"
+        
+        # 情绪
+        if 'sentiment' in report['sections']:
+            sent = report['sections']['sentiment']
+            md += f"""### 5. 市场情绪
+
+| 指标 | 值 |
+|------|------|
+| 情绪状态 | {sent.get('status', 'N/A')} |
+| 情绪描述 | {sent.get('description', 'N/A')} |
+| 看涨比例 | {sent['bullish_pct']:.1f}% |
+| 看跌比例 | {sent['bearish_pct']:.1f}% |
+| 数据来源 | {sent.get('alignment', 'local')} |
 
 """
         
