@@ -670,20 +670,42 @@ def analyze_comprehensive(symbol: str, style: str = 'value') -> Dict:
 # 测试
 if __name__ == '__main__':
     import sys
+    import argparse
     
-    symbol = sys.argv[1] if len(sys.argv) > 1 else '002050'
+    parser = argparse.ArgumentParser(description='股票综合分析')
+    parser.add_argument('symbol', help='股票代码')
+    parser.add_argument('--style', default='value', help='投资风格')
+    parser.add_argument('--format', default='md', choices=['md', 'html'], help='输出格式')
+    
+    args = parser.parse_args()
     
     analyzer = ComprehensiveStockAnalyzer()
-    report = analyzer.analyze(symbol, style='value')
+    report = analyzer.analyze(args.symbol, style=args.style)
     
-    # 生成报告
-    md = analyzer.generate_report(report)
+    # 根据格式生成报告
+    if args.format == 'html':
+        # 加载HTML报告生成器
+        try:
+            html_reporter = load_module(
+                "stock_html_reporter",
+                os.path.join(BASE_DIR, "scripts", "features", "stock_html_reporter.py")
+            )
+            output = html_reporter.generate_html_report(report, analyzer.report_enhancer)
+            ext = 'html'
+        except Exception as e:
+            print(f"HTML生成器加载失败: {e}")
+            output = analyzer.generate_report(report)
+            ext = 'md'
+    else:
+        output = analyzer.generate_report(report)
+        ext = 'md'
     
     # 保存
-    output_file = f'D:\\OpenClaw\\outputs\\reports\\comprehensive_{symbol}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.md'
+    output_file = f'D:\\OpenClaw\\outputs\\reports\\comprehensive_{args.symbol}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.{ext}'
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(md)
+        f.write(output)
     
     print(f"\n✅ 报告已保存: {output_file}")
+
