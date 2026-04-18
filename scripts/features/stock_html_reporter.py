@@ -844,150 +844,72 @@ class CompleteStockReporter:
         trend = tech.get('trend', 'N/A')
         rsi = tech.get('rsi', 50)
         macd = tech.get('macd_status', 'N/A')
-        
+        rsi_str = f"{rsi:.1f}"
+
         # RSI分析
-        if rsi > 80:
-            rsi_status = "严重超买"
-            rsi_color = "#e74c3c"
-            rsi_signal = "强烈卖出"
-            rsi_analysis = "RSI超过80，严重超买，短期极可能回调"
-        elif rsi > 70:
-            rsi_status = "超买"
-            rsi_color = "#e74c3c"
-            rsi_signal = "卖出"
-            rsi_analysis = "RSI超过70，超买区域，短期可能回调"
-        elif rsi < 20:
-            rsi_status = "严重超卖"
-            rsi_color = "#27ae60"
-            rsi_signal = "强烈买入"
-            rsi_analysis = "RSI低于20，严重超卖，短期可能反弹"
+        if rsi > 70:
+            rsi_status, rsi_color = "超买", "#e74c3c"
         elif rsi < 30:
-            rsi_status = "超卖"
-            rsi_color = "#27ae60"
-            rsi_signal = "买入"
-            rsi_analysis = "RSI低于30，超卖区域，短期可能反弹"
+            rsi_status, rsi_color = "超卖", "#27ae60"
         else:
-            rsi_status = "中性"
-            rsi_color = "#f39c12"
-            rsi_signal = "观望"
-            rsi_analysis = "RSI在30-70区间，市场处于中性状态"
-        
+            rsi_status, rsi_color = "中性", "#f39c12"
+
         # MACD分析
         if '金叉' in macd:
-            macd_status = "看涨"
-            macd_color = "#27ae60"
-            macd_analysis = "MACD金叉，短期趋势向上，买入信号"
+            macd_status, macd_color = "看涨", "#27ae60"
         elif '死叉' in macd:
-            macd_status = "看跌"
-            macd_color = "#e74c3c"
-            macd_analysis = "MACD死叉，短期趋势向下，卖出信号"
+            macd_status, macd_color = "看跌", "#e74c3c"
         else:
-            macd_status = "中性"
-            macd_color = "#f39c12"
-            macd_analysis = "MACD无明显信号"
-        
+            macd_status, macd_color = "中性", "#f39c12"
+
         # 趋势分析
         if '多头' in trend:
-            trend_status = "上升趋势"
-            trend_color = "#27ae60"
-            trend_analysis = "当前处于上升趋势，建议顺势操作"
+            trend_status, trend_color = "上升趋势", "#27ae60"
         elif '空头' in trend:
-            trend_status = "下降趋势"
-            trend_color = "#e74c3c"
-            trend_analysis = "当前处于下降趋势，建议谨慎"
+            trend_status, trend_color = "下降趋势", "#e74c3c"
         else:
-            trend_status = "震荡"
-            trend_color = "#f39c12"
-            trend_analysis = "当前处于震荡状态，建议观望"
-        
-        # 入场信号部分
-        signals_html = ""
+            trend_status, trend_color = "震荡", "#f39c12"
+
+        # 入场信号表格
+        signals_table = ""
         if entry_signals and entry_signals.get('signals'):
-            signals_html = '''
-            <div class="analysis-box">
-                <div class="analysis-title">高置信度入场信号</div>
-                <div class="analysis-text">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>信号名称</th>
-                                <th>历史成功率</th>
-                                <th>置信度</th>
-                                <th>操作建议</th>
-                                <th>风险等级</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            '''
+            signals_table = "<table class='data-table'><thead><tr><th>信号</th><th>成功率</th><th>建议</th></tr></thead><tbody>"
             for sig in entry_signals['signals']:
-                signals_html += f'''
-                            <tr>
-                                <td><strong>{sig['name']}</strong></td>
-                                <td style="color: {'#27ae60' if sig['success_rate'] > 0.7 else '#f39c12' if sig['success_rate'] > 0.5 else '#e74c3c'}; font-weight: 600;">{sig['success_rate']*100:.0f}%</td>
-                                <td>{sig['confidence']*100:.0f}%</td>
-                                <td>{sig['action']}</td>
-                                <td>{sig['risk_level']}</td>
-                            </tr>
-                '''
-            signals_html += '''
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            '''
-        
-        return f'''
+                rate = sig['success_rate'] * 100
+                color = "#27ae60" if rate > 70 else "#f39c12" if rate > 50 else "#e74c3c"
+                signals_table += f"<tr><td>{sig['name']}</td><td style='color:{color}'>{rate:.0f}%</td><td>{sig['action']}</td></tr>"
+            signals_table += "</tbody></table>"
+
+        # 回测验证表格
+        backtest_table = ""
+        if backtest and backtest.get('results'):
+            backtest_table = "<table class='data-table'><thead><tr><th>信号</th><th>成功率</th><th>收益</th><th>样本</th></tr></thead><tbody>"
+            for bt in backtest['results']:
+                rate = bt['win_rate'] * 100
+                ret = bt['avg_return']
+                color = "#27ae60" if rate > 70 else "#f39c12" if rate > 50 else "#e74c3c"
+                ret_color = "#27ae60" if ret > 0 else "#e74c3c"
+                ret_text = f"+{ret:.1f}%" if ret > 0 else f"{ret:.1f}%"
+                backtest_table += f"<tr><td>{bt['signal']}</td><td style='color:{color}'>{rate:.0f}%</td><td style='color:{ret_color}'>{ret_text}</td><td>{bt['sample_size']}</td></tr>"
+            backtest_table += "</tbody></table><p style='font-size:13px;color:#666;margin-top:10px;'>教学: 成功率>70%高置信，<50%需谨慎</p>"
+
+        return f"""
         <div class="section">
             <div class="section-header">
                 <div class="section-number">4</div>
-                <div>
-                    <div class="section-title">技术分析</div>
-                    <span class="section-desc">择时参考 - 不改变投资方向</span>
-                </div>
+                <div><div class="section-title">技术分析</div><span class="section-desc">择时参考</span></div>
             </div>
-            
             <div class="metrics-grid">
-                <div class="metric-item">
-                    <div class="metric-label">趋势</div>
-                    <div class="metric-value" style="font-size: 24px; color: {trend_color}">{trend_status}</div>
-                    <div class="metric-change">{trend}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">RSI</div>
-                    <div class="metric-value">{rsi:.1f}</div>
-                    <div class="metric-change" style="color: {rsi_color}">{rsi_status}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">MACD</div>
-                    <div class="metric-value" style="font-size: 24px">{macd}</div>
-                    <div class="metric-change" style="color: {macd_color}">{macd_status}</div>
-                </div>
+                <div class="metric-item"><div class="metric-label">趋势</div><div class="metric-value" style="color:{trend_color}">{trend_status}</div></div>
+                <div class="metric-item"><div class="metric-label">RSI</div><div class="metric-value">{rsi_str}</div><div class="metric-change" style="color:{rsi_color}">{rsi_status}</div></div>
+                <div class="metric-item"><div class="metric-label">MACD</div><div class="metric-value" style="color:{macd_color}">{macd_status}</div></div>
             </div>
-            
-            <div class="analysis-box">
-                <div class="analysis-title">技术指标分析</div>
-                <div class="analysis-text">
-                    <ul>
-                        <li><strong>趋势判断：</strong>{trend_analysis}</li>
-                        <li><strong>RSI分析：</strong>{rsi_analysis}（当前RSI={rsi:.1f}）</li>
-                        <li><strong>MACD分析：</strong>{macd_analysis}</li>
-                    </ul>
-                </div>
-            </div>
-            
-            {signals_html}
-            
-            <div class="summary-box">
-                <div class="summary-title">技术小结</div>
-                <div class="summary-text">
-                    RSI {rsi:.1f}，{rsi_status}。MACD {macd}，{macd_status}。趋势：{trend}。
-                    <br><strong>综合信号：</strong>{'技术面偏多，可考虑入场' if rsi_signal == '买入' or macd_status == '看涨' else '技术面偏空，建议观望' if rsi_signal == '卖出' or macd_status == '看跌' else '技术面中性，等待明确信号'}
-                    <br><strong>注意：</strong>技术分析仅作择时参考，投资决策应以基本面为主。
-                </div>
-            </div>
+            {signals_table}
+            {backtest_table}
+            <div class="summary-box"><div class="summary-title">技术面小结</div><div class="summary-text">趋势{trend_status}，RSI{rsi_str}({rsi_status})，MACD{macd_status}</div></div>
         </div>
-        '''
-    
+        """
+
     def _build_sentiment_detailed(self, sent: Dict) -> str:
         """构建详细的市场情绪"""
         status = sent.get('status', 'neutral')
