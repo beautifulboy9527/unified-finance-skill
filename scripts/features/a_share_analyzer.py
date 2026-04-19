@@ -1003,62 +1003,106 @@ class AShareAnalyzer:
             return {'available': False, 'analysis': f'财报分析失败: {str(e)[:50]}'}
     
     def _validate_volume(self, symbol: str, hist, technical: Dict) -> Dict:
-        """成交量验证信号"""
+        """成交量验证信号 + 量价关系分析"""
         if not VOLUME_VALIDATOR_AVAILABLE:
             return {'available': False, 'analysis': '成交量验证模块未加载'}
         
         try:
             validator = VolumeValidator()
             signals = technical.get('signals', [])
+            
+            # 获取量价数据
+            close = hist['Close'] if 'Close' in hist else hist['收盘']
+            volume = hist['Volume'] if 'Volume' in hist else hist['成交量']
+            
+            # 计算量价关系
+            price_change = (close.iloc[-1] - close.iloc[-2]) / close.iloc[-2] * 100
+            vol_ma = volume.rolling(20).mean()
+            volume_ratio = volume.iloc[-1] / vol_ma.iloc[-1] if vol_ma.iloc[-1] > 0 else 1.0
+            
+            # 判断量价关系类型
+            if price_change > 0 and volume_ratio < 0.8:
+                vp_pattern = '缩量上涨'
+                vp_analysis = '缩量上涨: 买盘不足，上涨动力较弱，可能是反弹而非反转，注意追高风险'
+                vp_signal = '谨慎'
+            elif price_change > 0 and volume_ratio > 1.5:
+                vp_pattern = '放量上涨'
+                vp_analysis = '放量上涨: 资金积极进场，上涨动能充足，可继续持有或顺势买入'
+                vp_signal = '积极'
+            elif price_change < 0 and volume_ratio < 0.8:
+                vp_pattern = '缩量下跌'
+                vp_analysis = '缩量下跌: 卖盘枯竭，下跌动力不足，可能接近底部，关注企稳信号'
+                vp_signal = '中性偏多'
+            elif price_change < 0 and volume_ratio > 1.5:
+                vp_pattern = '放量下跌'
+                vp_analysis = '放量下跌: 恐慌抛售，下跌动能强，短期仍有下探风险，建议观望'
+                vp_signal = '偏空'
+            else:
+                vp_pattern = '量价均衡'
+                vp_analysis = '量价均衡: 成交量和价格变动匹配，市场情绪平稳，维持原有判断'
+                vp_signal = '中性'
+            
+            # 量能水平中文映射
+            if volume_ratio >= 3.0:
+                level_cn = '天量'
+            elif volume_ratio >= 2.0:
+                level_cn = '巨量'
+            elif volume_ratio >= 1.5:
+                level_cn = '放量'
+            elif volume_ratio >= 0.8:
+                level_cn = '正常'
+            elif volume_ratio >= 0.5:
+                level_cn = '偏低'
+            else:
+                level_cn = '极低'
+            
+            # 置信度调整
+            if volume_ratio >= 1.5:
+                confidence = 1.2
+                confidence_desc = '成交量放大，信号可靠性提高'
+            elif volume_ratio >= 0.8:
+                confidence = 1.0
+                confidence_desc = '成交量正常，维持原有判断'
+            elif volume_ratio >= 0.5:
+                confidence = 0.8
+                confidence_desc = '成交量不足，需谨慎对待'
+            else:
+                confidence = 0.6
+                confidence_desc = '成交量严重不足，建议观望'
+            
+            # 验证信号
             if signals:
                 top_signal = signals[0]
                 result = validator.validate_signal(symbol, top_signal, hist)
-                volume_ratio = result.get('volume_ratio', 1.0)
-                volume_level = result.get('volume_level', 'normal')
-                confidence = result.get('confidence_adjustment', 1.0)
-                
-                # 量能水平中文映射
-                level_cn = {
-                    'very_low': '极低',
-                    'low': '偏低',
-                    'normal': '正常',
-                    'high': '放量',
-                    'very_high': '巨量',
-                    'climactic': '天量'
-                }.get(volume_level, volume_level)
-                
-                # 置信度调整解读
-                if confidence >= 1.2:
-                    confidence_desc = '信号增强: 成交量配合良好，信号可靠性提高'
-                elif confidence >= 1.0:
-                    confidence_desc = '信号正常: 成交量适中，维持原有判断'
-                elif confidence >= 0.8:
-                    confidence_desc = '信号减弱: 成交量不足，需谨慎对待'
-                else:
-                    confidence_desc = '信号存疑: 成交量严重不足，建议观望'
-                
-                # 详细分析
-                analysis_parts = [f"量比{volume_ratio:.2f}，{level_cn}量能"]
                 warnings = result.get('warnings', [])
                 strengths = result.get('strengths', [])
-                if warnings:
-                    analysis_parts.append('风险: ' + '、'.join(warnings))
-                if strengths:
-                    analysis_parts.append('优势: ' + '、'.join(strengths))
-                analysis_parts.append(confidence_desc)
-                
-                return {
-                    'available': True,
-                    'is_valid': result.get('is_valid', True),
-                    'volume_ratio': volume_ratio,
-                    'volume_level': volume_level,
-                    'volume_level_cn': level_cn,
-                    'confidence': confidence,
-                    'confidence_desc': confidence_desc,
-                    'warnings': warnings,
-                    'strengths': strengths,
-                    'analysis': '；'.join(analysis_parts)
-                }
+            else:
+                warnings = []
+                strengths = []
+            
+            # 综合分析
+            analysis_parts = [
+                f"【量价关系】{vp_pattern}: {vp_analysis}",
+                f"【量能水平】量比{volume_ratio:.2f}，{level_cn}量能",
+                f"【信号判断】{confidence_desc}"
+            ]
+            if warnings:
+                analysis_parts.append(f"【风险提示】{'、'.join(warnings)}")
+            
+            return {
+                'available': True,
+                'is_valid': confidence >= 0.8,
+                'volume_ratio': float(volume_ratio),
+                'volume_level_cn': level_cn,
+                'vp_pattern': vp_pattern,
+                'vp_analysis': vp_analysis,
+                'vp_signal': vp_signal,
+                'confidence': confidence,
+                'confidence_desc': confidence_desc,
+                'warnings': warnings,
+                'strengths': strengths,
+                'analysis': '；'.join(analysis_parts)
+            }
             return {'available': True, 'volume_ratio': 1.0, 'analysis': '无信号需验证'}
         except Exception as e:
             return {'available': False, 'analysis': f'成交量验证失败: {str(e)[:50]}'}
@@ -1107,16 +1151,49 @@ class AShareAnalyzer:
             conservative = atr_calc.calculate(symbol, level='conservative')
             
             if standard.get('current_price'):
+                current_price = standard.get('current_price')
+                atr = standard.get('atr')
+                stop_std = standard.get('stop_loss')
+                stop_std_pct = standard.get('stop_loss_pct')
+                stop_cons = conservative.get('stop_loss')
+                stop_cons_pct = conservative.get('stop_loss_pct')
+                
+                # 详细风险管理分析
+                analysis_parts = []
+                
+                # 1. ATR解读
+                analysis_parts.append(f"【ATR分析】当前ATR={atr:.4f}，约为股价的{abs(atr/current_price*100):.1f}%，波动{'较大' if abs(atr/current_price) > 0.03 else '适中'}")
+                
+                # 2. 止损位解读
+                analysis_parts.append(f"【止损建议】标准止损{stop_std:.2f}({stop_std_pct:.1f}%)适合趋势交易，保守止损{stop_cons:.2f}({stop_cons_pct:.1f}%)适合短线交易")
+                
+                # 3. 风险评估
+                if abs(stop_std_pct) > 8:
+                    analysis_parts.append(f"【风险提示】止损幅度较大(>{8}%)，建议轻仓或观望，等待趋势明朗")
+                elif abs(stop_std_pct) > 5:
+                    analysis_parts.append(f"【风险提示】止损幅度适中(5-8%)，可考虑半仓操作")
+                else:
+                    analysis_parts.append(f"【风险提示】止损幅度较小(<5%)，风险可控")
+                
+                # 4. 仓位建议
+                if abs(stop_std_pct) > 8:
+                    position_advice = "建议仓位: 0-10% (风险较高)"
+                elif abs(stop_std_pct) > 5:
+                    position_advice = "建议仓位: 10-30% (适度参与)"
+                else:
+                    position_advice = "建议仓位: 30-50% (风险可控)"
+                analysis_parts.append(f"【仓位建议】{position_advice}")
+                
                 return {
                     'available': True,
-                    'current_price': standard.get('current_price'),
-                    'atr': standard.get('atr'),
-                    'stop_loss_standard': standard.get('stop_loss'),
-                    'stop_loss_pct_standard': standard.get('stop_loss_pct'),
-                    'stop_loss_conservative': conservative.get('stop_loss'),
-                    'stop_loss_pct_conservative': conservative.get('stop_loss_pct'),
+                    'current_price': current_price,
+                    'atr': atr,
+                    'stop_loss_standard': stop_std,
+                    'stop_loss_pct_standard': stop_std_pct,
+                    'stop_loss_conservative': stop_cons,
+                    'stop_loss_pct_conservative': stop_cons_pct,
                     'risk_amount': standard.get('risk_amount'),
-                    'analysis': f"ATR止损: 标准-{standard.get('stop_loss_pct', 0):.1f}%，保守-{conservative.get('stop_loss_pct', 0):.1f}%"
+                    'analysis': '；'.join(analysis_parts)
                 }
             return {'available': False, 'analysis': '无法计算ATR'}
         except Exception as e:
@@ -1160,8 +1237,9 @@ class AShareAnalyzer:
             short_actions.append(f"技术面强势，可尝试短线做多，目标{resistance_near:.2f}")
             short_actions.append(f"止损设在{support_near:.2f} ({support_pct:.1f}%)")
         elif total_strength <= -6:
-            short_actions.append(f"技术面弱势，建议观望或轻仓做空")
-            short_actions.append(f"若反弹至{resistance_near:.2f}可考虑减仓")
+            # A股不能做空，改为观望建议
+            short_actions.append(f"技术面弱势，建议观望等待")
+            short_actions.append(f"等待跌至{support_near:.2f}支撑位企稳后再考虑")
         else:
             short_actions.append(f"震荡行情，建议区间操作")
             short_actions.append(f"支撑{support_near:.2f}附近买入，阻力{resistance_near:.2f}附近卖出")
@@ -1205,8 +1283,8 @@ class AShareAnalyzer:
             mid_actions.append(f"跌破MA20({ma20:.2f})，趋势偏空")
         
         advice['mid_term'] = {
-            'direction': '看多' if is_profitable and total_strength > 0 else '看空' if not is_profitable else '中性',
-            'entry_strategy': '分批建仓' if is_profitable else '观望',
+            'direction': '偏多' if is_profitable and total_strength > 0 else '谨慎' if not is_profitable else '中性',
+            'entry_strategy': '分批建仓' if is_profitable else '观望回避',
             'holding_weeks': '1-4周',
             'actions': mid_actions
         }
@@ -1821,32 +1899,74 @@ class AShareAnalyzer:
         
         volume_ratio = vol.get('volume_ratio', 1.0)
         volume_level_cn = vol.get('volume_level_cn', '正常')
+        vp_pattern = vol.get('vp_pattern', '量价均衡')
+        vp_analysis = vol.get('vp_analysis', '')
+        vp_signal = vol.get('vp_signal', '中性')
         is_valid = vol.get('is_valid', True)
         confidence = vol.get('confidence', 1.0)
         confidence_desc = vol.get('confidence_desc', '')
-        warnings = vol.get('warnings', [])
-        strengths = vol.get('strengths', [])
+        
+        # 量价关系颜色
+        vp_colors = {
+            '放量上涨': '#27ae60',
+            '缩量下跌': '#27ae60',
+            '缩量上涨': '#f39c12',
+            '放量下跌': '#e74c3c',
+            '量价均衡': '#3498db'
+        }
+        vp_color = vp_colors.get(vp_pattern, '#3498db')
         
         if volume_ratio >= 2.0:
             ratio_color = '#27ae60'
-            ratio_desc = '放量: 成交活跃，市场参与度高'
         elif volume_ratio >= 1.0:
             ratio_color = '#3498db'
-            ratio_desc = '正常: 成交适中，市场情绪平稳'
         else:
             ratio_color = '#f39c12'
-            ratio_desc = '缩量: 成交低迷，市场观望情绪浓厚'
         
         status_color = '#27ae60' if is_valid else '#e74c3c'
         status_text = '信号有效' if is_valid else '信号存疑'
         
-        # 解读内容
-        analysis_html = f'<div>• 【量比{volume_ratio:.2f}】{ratio_desc}</div>'
-        if warnings:
-            analysis_html += f'<div>• 【风险提示】{"、".join(warnings)}</div>'
-        if strengths:
-            analysis_html += f'<div>• 【积极信号】{"、".join(strengths)}</div>'
-        analysis_html += f'<div>• 【置信度{confidence:.1f}x】{confidence_desc}</div>'
+        return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>📊</span> 成交量验证</h2>
+            
+            <!-- 量价关系 -->
+            <div class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                <h3 class="font-bold text-gray-700 mb-2">📈 量价关系分析</h3>
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="px-3 py-1 rounded-full text-sm font-bold" style="background: {vp_color}20; color: {vp_color}">{vp_pattern}</span>
+                    <span class="text-sm text-gray-600">{vp_signal}</span>
+                </div>
+                <p class="text-sm text-gray-600">{vp_analysis}</p>
+            </div>
+            
+            <!-- 量能指标 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">量比</div>
+                    <div class="text-2xl font-bold" style="color: {ratio_color}">{volume_ratio:.2f}x</div>
+                    <div class="text-xs text-gray-400 mt-1">{'放量' if volume_ratio >= 1.5 else '缩量' if volume_ratio < 0.8 else '正常'}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">量能水平</div>
+                    <div class="text-xl font-bold">{volume_level_cn}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">信号状态</div>
+                    <div class="text-xl font-bold" style="color: {status_color}">{status_text}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">置信度</div>
+                    <div class="text-xl font-bold">{confidence:.1f}x</div>
+                    <div class="text-xs text-gray-400 mt-1">{'增强' if confidence > 1 else '减弱' if confidence < 1 else '不变'}</div>
+                </div>
+            </div>
+            
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-bold text-gray-700 mb-2">📖 综合解读</h3>
+                <div class="text-sm text-gray-600">{confidence_desc}</div>
+            </div>
+        </div>'''
         
         return f'''
         <div class="card p-6 mb-6">
