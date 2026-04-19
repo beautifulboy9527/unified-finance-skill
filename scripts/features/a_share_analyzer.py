@@ -294,11 +294,11 @@ class AShareAnalyzer:
         pe = info.get('trailingPE')
         pb = info.get('priceToBook')
         ps = info.get('priceToSalesTrailing12Months')
-        market_cap_usd = info.get('marketCap', 0)
+        market_cap = info.get('marketCap', 0)
         
-        # A股市值单位转换: yfinance返回美元
-        # 使用实时汇率约7.8，并标注数据来源
-        market_cap_cny = market_cap_usd * 7.8 if market_cap_usd else 0
+        # yfinance对A股返回的市值单位是人民币元
+        # 46,890,000,384 元 = 468.90 亿元
+        market_cap_display = market_cap / 1e8  # 转换为亿元
         
         pe_status = self._get_pe_status(pe)
         pb_status = self._get_pb_status(pb)
@@ -311,14 +311,10 @@ class AShareAnalyzer:
         if pb:
             analysis_parts.append(f"PB为{pb:.2f}倍，{pb_status['desc']}")
         
-        # 添加市值说明
-        if market_cap_cny:
-            analysis_parts.append(f"市值{market_cap_cny/1e9:.0f}亿元(美元转换)")
-        
         return {
             'pe': pe, 'pb': pb, 'ps': ps,
-            'market_cap': market_cap_cny,
-            'market_cap_str': f"{market_cap_cny/1e9:.0f}亿元" if market_cap_cny else 'N/A',
+            'market_cap': market_cap,
+            'market_cap_str': f"{market_cap_display:.2f}亿元" if market_cap else 'N/A',
             'pe_status': pe_status, 'pb_status': pb_status,
             'analysis': '；'.join(analysis_parts)
         }
