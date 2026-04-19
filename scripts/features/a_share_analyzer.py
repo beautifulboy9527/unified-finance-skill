@@ -44,6 +44,27 @@ try:
 except ImportError:
     SIGNAL_AVAILABLE = False
 
+# 导入成交量验证模块
+try:
+    from volume_validator import VolumeValidator
+    VOLUME_VALIDATOR_AVAILABLE = True
+except ImportError:
+    VOLUME_VALIDATOR_AVAILABLE = False
+
+# 导入风险管理模块
+try:
+    from risk_management import ATRStopLoss, PositionSizer
+    RISK_MANAGEMENT_AVAILABLE = True
+except ImportError:
+    RISK_MANAGEMENT_AVAILABLE = False
+
+# 导入失败形态检测模块
+try:
+    from failed_patterns import FailedPatternDetector
+    FAILED_PATTERNS_AVAILABLE = True
+except ImportError:
+    FAILED_PATTERNS_AVAILABLE = False
+
 
 class AShareAnalyzer:
     """A股综合分析器 v3.0"""
@@ -115,6 +136,15 @@ class AShareAnalyzer:
         
         # 6. 技术分析
         result['technical'] = self._analyze_technical(hist)
+        
+        # 6.1 成交量验证
+        result['volume_validation'] = self._validate_volume(symbol, hist, result['technical'])
+        
+        # 6.2 失败形态检测
+        result['failed_patterns'] = self._detect_failed_patterns(symbol, hist)
+        
+        # 6.3 风险管理 (ATR止损)
+        result['risk_management'] = self._calculate_risk_management(symbol, hist)
         
         # 7. 深度研报
         result['research'] = self._analyze_research(yf_symbol, symbol)
@@ -835,6 +865,90 @@ class AShareAnalyzer:
         except Exception as e:
             return {'available': False, 'analysis': f'财报分析失败: {str(e)[:50]}'}
     
+    def _validate_volume(self, symbol: str, hist, technical: Dict) -> Dict:
+        """成交量验证信号"""
+        if not VOLUME_VALIDATOR_AVAILABLE:
+            return {'available': False, 'analysis': '成交量验证模块未加载'}
+        
+        try:
+            validator = VolumeValidator()
+            signals = technical.get('signals', [])
+            if signals:
+                top_signal = signals[0]
+                result = validator.validate_signal(symbol, top_signal, hist)
+                return {
+                    'available': True,
+                    'is_valid': result.get('is_valid', True),
+                    'volume_ratio': result.get('volume_ratio', 1.0),
+                    'volume_level': result.get('volume_level', 'normal'),
+                    'confidence': result.get('confidence_adjustment', 1.0),
+                    'warnings': result.get('warnings', []),
+                    'strengths': result.get('strengths', []),
+                    'analysis': f"量比{result.get('volume_ratio', 1.0):.2f}，{result.get('volume_level', 'normal')}量能"
+                }
+            return {'available': True, 'volume_ratio': 1.0, 'analysis': '无信号需验证'}
+        except Exception as e:
+            return {'available': False, 'analysis': f'成交量验证失败: {str(e)[:50]}'}
+    
+    def _detect_failed_patterns(self, symbol: str, hist) -> Dict:
+        """检测失败形态"""
+        if not FAILED_PATTERNS_AVAILABLE:
+            return {'available': False, 'analysis': '失败形态检测模块未加载'}
+        
+        try:
+            detector = FailedPatternDetector()
+            patterns = detector.detect(symbol, hist)
+            
+            if patterns:
+                pattern_list = []
+                for p in patterns:
+                    pattern_list.append({
+                        'name': p.get('name', '未知'),
+                        'pattern': p.get('pattern', ''),
+                        'detected': p.get('detected', False),
+                        'confidence': p.get('confidence', 0),
+                        'reverse_action': p.get('reverse_action', ''),
+                        'entry_point': p.get('entry_point'),
+                        'stop_loss': p.get('stop_loss'),
+                        'target': p.get('target')
+                    })
+                
+                return {
+                    'available': True,
+                    'patterns': pattern_list,
+                    'count': len(patterns),
+                    'analysis': f"检测到{len(patterns)}个失败形态"
+                }
+            return {'available': True, 'patterns': [], 'count': 0, 'analysis': '暂无失败形态'}
+        except Exception as e:
+            return {'available': False, 'analysis': f'失败形态检测失败: {str(e)[:50]}'}
+    
+    def _calculate_risk_management(self, symbol: str, hist) -> Dict:
+        """计算ATR止损位"""
+        if not RISK_MANAGEMENT_AVAILABLE:
+            return {'available': False, 'analysis': '风险管理模块未加载'}
+        
+        try:
+            atr_calc = ATRStopLoss()
+            standard = atr_calc.calculate(symbol, level='standard')
+            conservative = atr_calc.calculate(symbol, level='conservative')
+            
+            if standard.get('current_price'):
+                return {
+                    'available': True,
+                    'current_price': standard.get('current_price'),
+                    'atr': standard.get('atr'),
+                    'stop_loss_standard': standard.get('stop_loss'),
+                    'stop_loss_pct_standard': standard.get('stop_loss_pct'),
+                    'stop_loss_conservative': conservative.get('stop_loss'),
+                    'stop_loss_pct_conservative': conservative.get('stop_loss_pct'),
+                    'risk_amount': standard.get('risk_amount'),
+                    'analysis': f"ATR止损: 标准-{standard.get('stop_loss_pct', 0):.1f}%，保守-{conservative.get('stop_loss_pct', 0):.1f}%"
+                }
+            return {'available': False, 'analysis': '无法计算ATR'}
+        except Exception as e:
+            return {'available': False, 'analysis': f'风险管理计算失败: {str(e)[:50]}'}
+    
     def _calculate_score(self, result) -> tuple:
         score = 50
         
@@ -1166,6 +1280,15 @@ class AShareAnalyzer:
             {self._section_analysis(result['technical']['analysis'])}
         </div>
         
+        <!-- 5.1 成交量验证 -->
+        {self._volume_validation_html(result)}
+        
+        <!-- 5.2 失败形态检测 -->
+        {self._failed_patterns_html(result)}
+        
+        <!-- 5.3 风险管理 -->
+        {self._risk_management_html(result)}
+        
         <!-- 6. 深度研报 -->
         {self._research_html(result)}
         
@@ -1358,6 +1481,132 @@ class AShareAnalyzer:
             </div>'''
         html += '</div></div>'
         return html
+    
+    def _volume_validation_html(self, result: Dict) -> str:
+        vol = result.get('volume_validation', {})
+        if not vol.get('available'):
+            return ''
+        
+        volume_ratio = vol.get('volume_ratio', 1.0)
+        volume_level = vol.get('volume_level', 'normal')
+        is_valid = vol.get('is_valid', True)
+        confidence = vol.get('confidence', 1.0)
+        warnings = vol.get('warnings', [])
+        strengths = vol.get('strengths', [])
+        
+        if volume_ratio >= 2.0:
+            ratio_color = '#27ae60'
+        elif volume_ratio >= 1.0:
+            ratio_color = '#3498db'
+        else:
+            ratio_color = '#f39c12'
+        
+        status_color = '#27ae60' if is_valid else '#e74c3c'
+        status_text = '信号有效' if is_valid else '信号存疑'
+        
+        items_html = ''
+        if warnings:
+            items_html += '<div class="text-red-600 text-sm">⚠️ ' + '、'.join(warnings) + '</div>'
+        if strengths:
+            items_html += '<div class="text-green-600 text-sm">✅ ' + '、'.join(strengths) + '</div>'
+        
+        return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>📊</span> 成交量验证</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">量比</div>
+                    <div class="text-2xl font-bold" style="color: {ratio_color}">{volume_ratio:.2f}x</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">量能水平</div>
+                    <div class="text-xl font-bold">{volume_level}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">信号状态</div>
+                    <div class="text-xl font-bold" style="color: {status_color}">{status_text}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">置信度调整</div>
+                    <div class="text-xl font-bold">{confidence:.1f}x</div>
+                </div>
+            </div>
+            {items_html}
+            {self._section_analysis(vol.get('analysis', ''))}
+        </div>'''
+    
+    def _failed_patterns_html(self, result: Dict) -> str:
+        fp = result.get('failed_patterns', {})
+        if not fp.get('available') or fp.get('count', 0) == 0:
+            return ''
+        
+        patterns = fp.get('patterns', [])
+        
+        html = f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>⚠️</span> 失败形态检测</h2>
+            <div class="space-y-3">'''
+        
+        for p in patterns:
+            action_color = '#e74c3c' if p.get('reverse_action') == 'sell' else '#27ae60'
+            html += f'''
+            <div class="p-4 bg-red-50 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-red-700">{p.get('name', '未知')}</span>
+                        <span class="text-gray-500 text-sm ml-2">置信度 {p.get('confidence', 0)*100:.0f}%</span>
+                    </div>
+                    <span class="px-2 py-1 rounded text-sm" style="background: {action_color}20; color: {action_color}">{p.get('reverse_action', '')}</span>
+                </div>'''
+            if p.get('entry_point'):
+                html += f'''<div class="text-sm text-gray-600 mt-2">入场: {p.get('entry_point'):.2f} | 止损: {p.get('stop_loss'):.2f} | 目标: {p.get('target'):.2f}</div>'''
+            html += '</div>'
+        
+        html += f'''</div>
+            {self._section_analysis(fp.get('analysis', ''))}
+        </div>'''
+        return html
+    
+    def _risk_management_html(self, result: Dict) -> str:
+        rm = result.get('risk_management', {})
+        if not rm.get('available'):
+            return ''
+        
+        current_price = rm.get('current_price', 0)
+        atr = rm.get('atr', 0)
+        stop_std = rm.get('stop_loss_standard', 0)
+        stop_std_pct = rm.get('stop_loss_pct_standard', 0)
+        stop_cons = rm.get('stop_loss_conservative', 0)
+        stop_cons_pct = rm.get('stop_loss_pct_conservative', 0)
+        
+        return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>🛡️</span> 风险管理 (ATR止损)</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">当前价格</div>
+                    <div class="text-xl font-bold">{current_price:.2f}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">ATR(14)</div>
+                    <div class="text-xl font-bold">{atr:.4f}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">标准止损</div>
+                    <div class="text-xl font-bold text-red-600">{stop_std:.2f}</div>
+                    <div class="text-sm text-red-500">{stop_std_pct:.1f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">保守止损</div>
+                    <div class="text-xl font-bold text-orange-600">{stop_cons:.2f}</div>
+                    <div class="text-sm text-orange-500">{stop_cons_pct:.1f}%</div>
+                </div>
+            </div>
+            <div class="p-3 bg-yellow-50 rounded-lg text-sm text-gray-600">
+                💡 建议: 标准2倍ATR止损适合趋势交易，保守1倍ATR止损适合短线交易
+            </div>
+            {self._section_analysis(rm.get('analysis', ''))}
+        </div>'''
     
     def _research_html(self, result: Dict) -> str:
         research = result.get('research', {})
