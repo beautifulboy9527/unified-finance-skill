@@ -436,24 +436,50 @@ class AShareAnalyzer:
         ma_support = ma20 if current > ma20 else None
         ma_resistance = ma20 if current < ma20 else None
         
-        # 智能选择: 结合前期高低点和枢轴点
-        # 近期支撑: 取20日低点、S1、MA20中的最高点(更保守)
-        support_levels = [low_20, s1]
-        if ma_support:
-            support_levels.append(ma_support)
-        support_near = max([x for x in support_levels if x < current]) if any(x < current for x in support_levels) else low_20
+        # 方法4: 布林带支撑/阻力
+        bb_lower = result['indicators']['bb_lower']
+        bb_upper = result['indicators']['bb_upper']
+        
+        # 智能选择: 结合前期高低点、枢轴点、均线、布林带
+        # 近期支撑: 取20日低点、S1、MA20、布林下轨中最接近当前价且在下方的高点(更保守)
+        support_candidates = [low_20, s1, bb_lower]
+        if ma_support and ma_support < current:
+            support_candidates.append(ma_support)
+        valid_supports = [x for x in support_candidates if x < current]
+        support_near = max(valid_supports) if valid_supports else low_20
         
         # 远期支撑: 取60日低点、S2
         support_far = min(low_60, s2) if s2 < current else low_60
         
-        # 近期阻力: 取20日高点、R1、MA20中的最低点(更保守)
-        resistance_levels = [high_20, r1]
-        if ma_resistance:
-            resistance_levels.append(ma_resistance)
-        resistance_near = min([x for x in resistance_levels if x > current]) if any(x > current for x in resistance_levels) else high_20
+        # 近期阻力: 取20日高点、R1、MA20、布林上轨中最接近当前价且在上方的高点(更保守)
+        resistance_candidates = [high_20, r1, bb_upper]
+        if ma_resistance and ma_resistance > current:
+            resistance_candidates.append(ma_resistance)
+        valid_resistances = [x for x in resistance_candidates if x > current]
+        resistance_near = min(valid_resistances) if valid_resistances else high_20
         
         # 远期阻力: 取60日高点、R2
         resistance_far = max(high_60, r2) if r2 > current else high_60
+        
+        # 识别支撑来源
+        if abs(support_near - bb_lower) < 0.05:
+            support_source = '布林下轨'
+        elif abs(support_near - low_20) < 0.05:
+            support_source = '20日低点'
+        elif abs(support_near - s1) < 0.05:
+            support_source = '枢轴点S1'
+        else:
+            support_source = '技术支撑'
+        
+        # 识别阻力来源
+        if abs(resistance_near - bb_upper) < 0.05:
+            resistance_source = '布林上轨'
+        elif abs(resistance_near - high_20) < 0.05:
+            resistance_source = '20日高点'
+        elif abs(resistance_near - r1) < 0.05:
+            resistance_source = '枢轴点R1'
+        else:
+            resistance_source = '技术阻力'
         
         # 计算距离当前价的百分比
         support_near_pct = (support_near - current) / current * 100
@@ -469,9 +495,11 @@ class AShareAnalyzer:
         patterns['support_near_pct'] = float(support_near_pct)
         patterns['resistance_far_pct'] = float(resistance_far_pct)
         patterns['support_far_pct'] = float(support_far_pct)
-        patterns['resistance_desc'] = f'阻力: {resistance_near:.2f} (+{resistance_near_pct:.1f}%) 近期, {resistance_far:.2f} (+{resistance_far_pct:.1f}%) 远期'
-        patterns['support_desc'] = f'支撑: {support_near:.2f} ({support_near_pct:.1f}%) 近期, {support_far:.2f} ({support_far_pct:.1f}%) 远期'
+        patterns['resistance_desc'] = f'阻力: {resistance_near:.2f} (+{resistance_near_pct:.1f}%) {resistance_source}, {resistance_far:.2f} (+{resistance_far_pct:.1f}%) 远期'
+        patterns['support_desc'] = f'支撑: {support_near:.2f} ({support_near_pct:.1f}%) {support_source}, {support_far:.2f} ({support_far_pct:.1f}%) 远期'
         patterns['pivot'] = float(pivot)
+        patterns['support_source'] = support_source
+        patterns['resistance_source'] = resistance_source
         
         # 3. RSI形态
         if rsi > 80:
@@ -985,15 +1013,51 @@ class AShareAnalyzer:
             if signals:
                 top_signal = signals[0]
                 result = validator.validate_signal(symbol, top_signal, hist)
+                volume_ratio = result.get('volume_ratio', 1.0)
+                volume_level = result.get('volume_level', 'normal')
+                confidence = result.get('confidence_adjustment', 1.0)
+                
+                # 量能水平中文映射
+                level_cn = {
+                    'very_low': '极低',
+                    'low': '偏低',
+                    'normal': '正常',
+                    'high': '放量',
+                    'very_high': '巨量',
+                    'climactic': '天量'
+                }.get(volume_level, volume_level)
+                
+                # 置信度调整解读
+                if confidence >= 1.2:
+                    confidence_desc = '信号增强: 成交量配合良好，信号可靠性提高'
+                elif confidence >= 1.0:
+                    confidence_desc = '信号正常: 成交量适中，维持原有判断'
+                elif confidence >= 0.8:
+                    confidence_desc = '信号减弱: 成交量不足，需谨慎对待'
+                else:
+                    confidence_desc = '信号存疑: 成交量严重不足，建议观望'
+                
+                # 详细分析
+                analysis_parts = [f"量比{volume_ratio:.2f}，{level_cn}量能"]
+                warnings = result.get('warnings', [])
+                strengths = result.get('strengths', [])
+                if warnings:
+                    analysis_parts.append('风险: ' + '、'.join(warnings))
+                if strengths:
+                    analysis_parts.append('优势: ' + '、'.join(strengths))
+                analysis_parts.append(confidence_desc)
+                
                 return {
                     'available': True,
                     'is_valid': result.get('is_valid', True),
-                    'volume_ratio': result.get('volume_ratio', 1.0),
-                    'volume_level': result.get('volume_level', 'normal'),
-                    'confidence': result.get('confidence_adjustment', 1.0),
-                    'warnings': result.get('warnings', []),
-                    'strengths': result.get('strengths', []),
-                    'analysis': f"量比{result.get('volume_ratio', 1.0):.2f}，{result.get('volume_level', 'normal')}量能"
+                    'volume_ratio': volume_ratio,
+                    'volume_level': volume_level,
+                    'volume_level_cn': level_cn,
+                    'confidence': confidence,
+                    'confidence_desc': confidence_desc,
+                    'warnings': warnings,
+                    'strengths': strengths,
+                    'analysis': '；'.join(analysis_parts)
                 }
             return {'available': True, 'volume_ratio': 1.0, 'analysis': '无信号需验证'}
         except Exception as e:
@@ -1612,6 +1676,12 @@ class AShareAnalyzer:
         resistance_near = patterns.get('resistance_near', 0)
         support_far = patterns.get('support_far', 0)
         resistance_far = patterns.get('resistance_far', 0)
+        support_source = patterns.get('support_source', '技术支撑')
+        resistance_source = patterns.get('resistance_source', '技术阻力')
+        support_near_pct = patterns.get('support_near_pct', 0)
+        resistance_near_pct = patterns.get('resistance_near_pct', 0)
+        support_far_pct = patterns.get('support_far_pct', 0)
+        resistance_far_pct = patterns.get('resistance_far_pct', 0)
         
         return f'''
         <div class="mb-4">
@@ -1620,22 +1690,22 @@ class AShareAnalyzer:
                 <div class="p-3 bg-green-50 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">近期支撑</div>
                     <div class="text-xl font-bold text-green-600">{support_near:.2f}</div>
-                    <div class="text-xs text-gray-400">20日低点</div>
+                    <div class="text-xs text-gray-400">{support_source} ({support_near_pct:.1f}%)</div>
                 </div>
                 <div class="p-3 bg-green-50 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">远期支撑</div>
                     <div class="text-xl font-bold text-green-600">{support_far:.2f}</div>
-                    <div class="text-xs text-gray-400">60日低点</div>
+                    <div class="text-xs text-gray-400">60日低点 ({support_far_pct:.1f}%)</div>
                 </div>
                 <div class="p-3 bg-red-50 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">近期阻力</div>
                     <div class="text-xl font-bold text-red-600">{resistance_near:.2f}</div>
-                    <div class="text-xs text-gray-400">20日高点</div>
+                    <div class="text-xs text-gray-400">{resistance_source} (+{resistance_near_pct:.1f}%)</div>
                 </div>
                 <div class="p-3 bg-red-50 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">远期阻力</div>
                     <div class="text-xl font-bold text-red-600">{resistance_far:.2f}</div>
-                    <div class="text-xs text-gray-400">60日高点</div>
+                    <div class="text-xs text-gray-400">60日高点 (+{resistance_far_pct:.1f}%)</div>
                 </div>
             </div>
         </div>'''
@@ -1750,27 +1820,33 @@ class AShareAnalyzer:
             return ''
         
         volume_ratio = vol.get('volume_ratio', 1.0)
-        volume_level = vol.get('volume_level', 'normal')
+        volume_level_cn = vol.get('volume_level_cn', '正常')
         is_valid = vol.get('is_valid', True)
         confidence = vol.get('confidence', 1.0)
+        confidence_desc = vol.get('confidence_desc', '')
         warnings = vol.get('warnings', [])
         strengths = vol.get('strengths', [])
         
         if volume_ratio >= 2.0:
             ratio_color = '#27ae60'
+            ratio_desc = '放量: 成交活跃，市场参与度高'
         elif volume_ratio >= 1.0:
             ratio_color = '#3498db'
+            ratio_desc = '正常: 成交适中，市场情绪平稳'
         else:
             ratio_color = '#f39c12'
+            ratio_desc = '缩量: 成交低迷，市场观望情绪浓厚'
         
         status_color = '#27ae60' if is_valid else '#e74c3c'
         status_text = '信号有效' if is_valid else '信号存疑'
         
-        items_html = ''
+        # 解读内容
+        analysis_html = f'<div>• 【量比{volume_ratio:.2f}】{ratio_desc}</div>'
         if warnings:
-            items_html += '<div class="text-red-600 text-sm">⚠️ ' + '、'.join(warnings) + '</div>'
+            analysis_html += f'<div>• 【风险提示】{"、".join(warnings)}</div>'
         if strengths:
-            items_html += '<div class="text-green-600 text-sm">✅ ' + '、'.join(strengths) + '</div>'
+            analysis_html += f'<div>• 【积极信号】{"、".join(strengths)}</div>'
+        analysis_html += f'<div>• 【置信度{confidence:.1f}x】{confidence_desc}</div>'
         
         return f'''
         <div class="card p-6 mb-6">
@@ -1779,22 +1855,30 @@ class AShareAnalyzer:
                 <div class="metric-card p-4 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">量比</div>
                     <div class="text-2xl font-bold" style="color: {ratio_color}">{volume_ratio:.2f}x</div>
+                    <div class="text-xs text-gray-400 mt-1">{'放量' if volume_ratio >= 1.5 else '缩量' if volume_ratio < 0.8 else '正常'}</div>
                 </div>
                 <div class="metric-card p-4 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">量能水平</div>
-                    <div class="text-xl font-bold">{volume_level}</div>
+                    <div class="text-xl font-bold">{volume_level_cn}</div>
+                    <div class="text-xs text-gray-400 mt-1">{'关注突破' if volume_ratio >= 2 else '市场观望' if volume_ratio < 0.5 else ''}</div>
                 </div>
                 <div class="metric-card p-4 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">信号状态</div>
                     <div class="text-xl font-bold" style="color: {status_color}">{status_text}</div>
+                    <div class="text-xs text-gray-400 mt-1">{'可执行' if is_valid else '需确认'}</div>
                 </div>
                 <div class="metric-card p-4 rounded-lg text-center">
                     <div class="text-gray-500 text-sm">置信度调整</div>
                     <div class="text-xl font-bold">{confidence:.1f}x</div>
+                    <div class="text-xs text-gray-400 mt-1">{'增强' if confidence > 1 else '减弱' if confidence < 1 else '不变'}</div>
                 </div>
             </div>
-            {items_html}
-            {self._section_analysis(vol.get('analysis', ''))}
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-bold text-gray-700 mb-2">📖 成交量验证解读</h3>
+                <div class="space-y-1 text-sm text-gray-600">
+                    {analysis_html}
+                </div>
+            </div>
         </div>'''
     
     def _failed_patterns_html(self, result: Dict) -> str:
