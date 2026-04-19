@@ -88,6 +88,10 @@ class AShareAnalyzer:
         'Software': '软件', 'Hardware': '硬件',
         'Biotechnology': '生物技术', 'Medical Devices': '医疗器械',
         'Oil & Gas': '石油天然气', 'Metals & Mining': '金属采矿',
+        'Furnishings, Fixtures & Appliances': '家电',
+        'Household Durables': '耐用消费品',
+        'Leisure Products': '休闲用品',
+        'Auto Components': '汽车零部件',
     }
     
     SECTOR_CN = {
@@ -99,6 +103,16 @@ class AShareAnalyzer:
         'Consumer Defensive': '消费防御板块',
     }
     
+    # 股票名称映射 (yfinance返回英文名时使用中文)
+    STOCK_NAME_CN = {
+        'Gree Electric Appliances, Inc. of Zhuhai': '格力电器',
+        'GREE ELEC APPLICAN': '格力电器',
+        'Zhongfu Shenying Carbon Fiber Co.,Ltd.': '中复神鹰',
+        'LONGi Green Energy Technology Co., Ltd.': '隆基绿能',
+        'Kweichow Moutai Co., Ltd.': '贵州茅台',
+        'Contemporary Amperex Technology Co. Limited': '宁德时代',
+    }
+    
     STOCK_INDUSTRY_OVERRIDE = {
         'LONGi': {'industry': '光伏', 'sector': '新能源', 'cycle': '周期波动', 'risk': '高', 
                   'desc': '光伏行业处于周期低谷，产能过剩导致价格下跌，龙头企业承压'},
@@ -107,6 +121,10 @@ class AShareAnalyzer:
         'CATL': {'industry': '动力电池', 'sector': '新能源', 'cycle': '成长期', 'risk': '中'},
         '中复神鹰': {'industry': '碳纤维', 'sector': '新材料', 'cycle': '成长期', 'risk': '中',
                     'desc': '碳纤维行业国产替代加速，高端产品需求增长，龙头地位稳固'},
+        '格力电器': {'industry': '家用电器', 'sector': '消费', 'cycle': '成熟期', 'risk': '低',
+                     'desc': '白电行业格局稳定，龙头企业现金流好，分红稳定'},
+        'GREE': {'industry': '家用电器', 'sector': '消费', 'cycle': '成熟期', 'risk': '低',
+                 'desc': '白电行业格局稳定，龙头企业现金流好，分红稳定'},
     }
     
     # 行业周期和风险知识库
@@ -128,6 +146,8 @@ class AShareAnalyzer:
         'Real Estate': {'cycle': '周期波动', 'risk': '高', 'desc': '房地产行业受政策和人口结构影响'},
         'Utilities': {'cycle': '成熟期', 'risk': '低', 'desc': '公用事业需求稳定，现金流好'},
         'Communication Services': {'cycle': '成熟期', 'risk': '中', 'desc': '通信行业竞争格局稳定'},
+        'Furnishings, Fixtures & Appliances': {'cycle': '成熟期', 'risk': '低', 'desc': '家电行业格局稳定，龙头企业现金流好'},
+        'Household Durables': {'cycle': '成熟期', 'risk': '低', 'desc': '耐用消费品行业需求稳定'},
         'default': {'cycle': '未知', 'risk': '未知', 'desc': ''},
     }
     
@@ -218,20 +238,29 @@ class AShareAnalyzer:
     
     def _get_cn_name(self, symbol: str, info: dict = None) -> str:
         """获取股票中文名称"""
-        # 优先从info获取
+        # 1. 优先从STOCK_NAME_CN映射获取
         if info:
             long_name = info.get('longName', '')
             short_name = info.get('shortName', '')
-            if long_name and len(long_name) < 20:
+            
+            # 检查映射表
+            if long_name in self.STOCK_NAME_CN:
+                return self.STOCK_NAME_CN[long_name]
+            if short_name in self.STOCK_NAME_CN:
+                return self.STOCK_NAME_CN[short_name]
+            
+            # 如果中文名已存在且合理
+            if long_name and len(long_name) < 20 and not long_name.isascii():
                 return long_name
-            if short_name and len(short_name) < 20:
+            if short_name and len(short_name) < 20 and not short_name.isascii():
                 return short_name
         
-        # 硬编码常见股票
+        # 2. 硬编码常见股票
         names = {
             '601012': '隆基绿能', '600519': '贵州茅台', '000001': '平安银行',
             '000002': '万科A', '601318': '中国平安', '600036': '招商银行',
-            '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪'
+            '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪',
+            '000651': '格力电器',
         }
         return names.get(symbol, symbol)
     
