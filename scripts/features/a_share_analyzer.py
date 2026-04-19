@@ -105,6 +105,30 @@ class AShareAnalyzer:
         'Tongwei': {'industry': '光伏', 'sector': '新能源', 'cycle': '周期波动', 'risk': '高'},
         'BYD': {'industry': '新能源汽车', 'sector': '新能源', 'cycle': '成长期', 'risk': '中'},
         'CATL': {'industry': '动力电池', 'sector': '新能源', 'cycle': '成长期', 'risk': '中'},
+        '中复神鹰': {'industry': '碳纤维', 'sector': '新材料', 'cycle': '成长期', 'risk': '中',
+                    'desc': '碳纤维行业国产替代加速，高端产品需求增长，龙头地位稳固'},
+    }
+    
+    # 行业周期和风险知识库
+    INDUSTRY_KNOWLEDGE = {
+        'Specialty Chemicals': {'cycle': '成熟期', 'risk': '中', 'desc': '化工行业周期性明显，受原材料价格波动影响大'},
+        'Chemicals': {'cycle': '成熟期', 'risk': '中', 'desc': '化工行业周期性明显，受原材料价格波动影响大'},
+        'Technology': {'cycle': '成长期', 'risk': '中高', 'desc': '科技行业技术更新快，竞争激烈'},
+        'Semiconductor Equipment & Materials': {'cycle': '成长期', 'risk': '高', 'desc': '半导体周期波动大，受下游需求影响显著'},
+        'Healthcare': {'cycle': '成长期', 'risk': '中', 'desc': '医疗行业需求稳定，政策影响较大'},
+        'Biotechnology': {'cycle': '成长期', 'risk': '高', 'desc': '生物技术研发风险高，成功回报大'},
+        'Energy': {'cycle': '周期波动', 'risk': '高', 'desc': '能源行业受油价波动影响大'},
+        'Oil & Gas': {'cycle': '周期波动', 'risk': '高', 'desc': '油气行业受地缘政治和需求影响'},
+        'Basic Materials': {'cycle': '成熟期', 'risk': '中', 'desc': '基础材料行业竞争充分，周期性明显'},
+        'Financial Services': {'cycle': '成熟期', 'risk': '中', 'desc': '金融行业受经济周期和政策影响'},
+        'Banks': {'cycle': '成熟期', 'risk': '中', 'desc': '银行业受经济周期和利率政策影响'},
+        'Consumer Cyclical': {'cycle': '周期波动', 'risk': '中', 'desc': '消费行业受经济周期影响明显'},
+        'Consumer Defensive': {'cycle': '成熟期', 'risk': '低', 'desc': '必选消费需求稳定，抗周期性强'},
+        'Industrials': {'cycle': '成熟期', 'risk': '中', 'desc': '工业行业受宏观经济影响较大'},
+        'Real Estate': {'cycle': '周期波动', 'risk': '高', 'desc': '房地产行业受政策和人口结构影响'},
+        'Utilities': {'cycle': '成熟期', 'risk': '低', 'desc': '公用事业需求稳定，现金流好'},
+        'Communication Services': {'cycle': '成熟期', 'risk': '中', 'desc': '通信行业竞争格局稳定'},
+        'default': {'cycle': '未知', 'risk': '未知', 'desc': ''},
     }
     
     def analyze(self, symbol: str) -> Dict:
@@ -122,10 +146,10 @@ class AShareAnalyzer:
         
         result = {
             'success': True, 'symbol': symbol, 'yf_symbol': yf_symbol,
-            'market': self.MARKET_MAP.get(market_suffix, '未知'),
+            'market': self._get_market_name(symbol),
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'name': info.get('longName', symbol),
-            'name_cn': self._get_cn_name(symbol),
+            'name_cn': self._get_cn_name(symbol, info),
         }
         
         # 1. 行业分析
@@ -173,20 +197,49 @@ class AShareAnalyzer:
         return result
     
     def _get_market_suffix(self, symbol: str) -> str:
-        if symbol.startswith('6'): return 'SS'
-        elif symbol.startswith(('0', '3')): return 'SZ'
-        elif symbol.startswith(('4', '8')): return 'BJ'
+        """获取市场后缀"""
+        if symbol.startswith('688'): return 'SS'  # 科创板
+        elif symbol.startswith('6'): return 'SS'   # 上交所主板
+        elif symbol.startswith('0'): return 'SZ'   # 深交所主板
+        elif symbol.startswith('3'): return 'SZ'   # 创业板
+        elif symbol.startswith('4'): return 'BJ'   # 北交所
+        elif symbol.startswith('8'): return 'BJ'   # 北交所
         return 'SS'
     
-    def _get_cn_name(self, symbol: str) -> str:
-        names = {'601012': '隆基绿能', '600519': '贵州茅台', '000001': '平安银行',
-                 '000002': '万科A', '601318': '中国平安', '600036': '招商银行'}
+    def _get_market_name(self, symbol: str) -> str:
+        """获取市场中文名称"""
+        if symbol.startswith('688'): return '科创板'
+        elif symbol.startswith('6'): return '上交所主板'
+        elif symbol.startswith('0'): return '深交所主板'
+        elif symbol.startswith('3'): return '创业板'
+        elif symbol.startswith('4'): return '北交所'
+        elif symbol.startswith('8'): return '北交所'
+        return '上交所'
+    
+    def _get_cn_name(self, symbol: str, info: dict = None) -> str:
+        """获取股票中文名称"""
+        # 优先从info获取
+        if info:
+            long_name = info.get('longName', '')
+            short_name = info.get('shortName', '')
+            if long_name and len(long_name) < 20:
+                return long_name
+            if short_name and len(short_name) < 20:
+                return short_name
+        
+        # 硬编码常见股票
+        names = {
+            '601012': '隆基绿能', '600519': '贵州茅台', '000001': '平安银行',
+            '000002': '万科A', '601318': '中国平安', '600036': '招商银行',
+            '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪'
+        }
         return names.get(symbol, symbol)
     
     def _analyze_industry(self, info, name) -> Dict:
         industry = info.get('industry', '未知')
         sector = info.get('sector', '未知')
         
+        # 1. 检查股票名称是否匹配自定义配置
         override = None
         for key, val in self.STOCK_INDUSTRY_OVERRIDE.items():
             if key.lower() in name.lower():
@@ -202,13 +255,15 @@ class AShareAnalyzer:
                 'analysis': f"公司属于{override['sector']}行业，当前处于{override['cycle']}阶段，行业风险{override['risk']}。{override.get('desc', '')}"
             }
         
-        industry_info = {'cycle': '未知', 'risk': '未知', 'desc': ''}
+        # 2. 从行业知识库获取
+        industry_info = self.INDUSTRY_KNOWLEDGE.get(industry, self.INDUSTRY_KNOWLEDGE['default'])
+        
         return {
             'name': industry, 'name_cn': self.INDUSTRY_CN.get(industry, industry),
             'sector': sector, 'sector_cn': self.SECTOR_CN.get(sector, sector),
             'cycle': industry_info['cycle'], 'risk': industry_info['risk'],
             'desc': industry_info.get('desc', ''),
-            'analysis': f"公司主营{self.INDUSTRY_CN.get(industry, industry)}业务。"
+            'analysis': f"公司主营{self.INDUSTRY_CN.get(industry, industry)}业务。{industry_info.get('desc', '')}"
         }
     
     def _analyze_price(self, hist) -> Dict:
@@ -239,7 +294,11 @@ class AShareAnalyzer:
         pe = info.get('trailingPE')
         pb = info.get('priceToBook')
         ps = info.get('priceToSalesTrailing12Months')
-        market_cap = info.get('marketCap', 0)
+        market_cap_usd = info.get('marketCap', 0)
+        
+        # A股市值单位转换: yfinance返回美元
+        # 使用实时汇率约7.8，并标注数据来源
+        market_cap_cny = market_cap_usd * 7.8 if market_cap_usd else 0
         
         pe_status = self._get_pe_status(pe)
         pb_status = self._get_pb_status(pb)
@@ -252,10 +311,14 @@ class AShareAnalyzer:
         if pb:
             analysis_parts.append(f"PB为{pb:.2f}倍，{pb_status['desc']}")
         
+        # 添加市值说明
+        if market_cap_cny:
+            analysis_parts.append(f"市值{market_cap_cny/1e9:.0f}亿元(美元转换)")
+        
         return {
             'pe': pe, 'pb': pb, 'ps': ps,
-            'market_cap': market_cap,
-            'market_cap_str': f"{market_cap/1e9:.2f}亿元" if market_cap else 'N/A',
+            'market_cap': market_cap_cny,
+            'market_cap_str': f"{market_cap_cny/1e9:.0f}亿元" if market_cap_cny else 'N/A',
             'pe_status': pe_status, 'pb_status': pb_status,
             'analysis': '；'.join(analysis_parts)
         }
@@ -1226,11 +1289,16 @@ class AShareAnalyzer:
         resistance_pct = patterns.get('resistance_near_pct', 0)
         total_strength = technical.get('total_strength', 0)
         
-        # 计算风险收益比
+        # 计算风险收益比和利润空间
         if abs(support_pct) > 0:
             risk_reward_ratio = abs(resistance_pct) / abs(support_pct)
         else:
             risk_reward_ratio = 1.0
+        
+        # 利润空间: 从当前价到阻力的距离
+        profit_potential = abs(resistance_pct)
+        # 亏损空间: 从当前价到支撑的距离
+        loss_potential = abs(support_pct)
         
         advice = {
             'short_term': {},  # 短线 (1-5天)
@@ -1267,7 +1335,9 @@ class AShareAnalyzer:
             'stop_loss': support_near,
             'holding_days': '1-5天',
             'actions': short_actions,
-            'risk_reward': f"1:{risk_reward_ratio:.1f}"
+            'risk_reward': f"1:{risk_reward_ratio:.1f}",
+            'profit_potential': f"+{profit_potential:.1f}%",
+            'loss_potential': f"-{loss_potential:.1f}%"
         }
         
         # ========== 中线操作建议 ==========
@@ -1538,7 +1608,7 @@ class AShareAnalyzer:
             </div>
             <div class="flex justify-center gap-8 text-gray-600 mb-6">
                 <span>🏢 {result['market']}</span>
-                <span>🏭 {result['industry']['sector_cn']}</span>
+                <span>🏭 {result['industry']['name_cn']}</span>
                 <span>📅 {result['timestamp']}</span>
             </div>
             
@@ -2246,7 +2316,7 @@ class AShareAnalyzer:
                 <div class="p-3 bg-gray-50 rounded-lg mb-3">
                     <span class="font-bold">操作策略: </span><span style="color: {strategy_color}">{strategy}</span>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div class="p-3 bg-gray-50 rounded-lg text-center">
                         <div class="text-gray-500 text-sm">入场区间</div>
                         <div class="text-lg font-bold">{short.get('entry_zone', '-')}</div>
@@ -2258,6 +2328,20 @@ class AShareAnalyzer:
                     <div class="p-3 bg-gray-50 rounded-lg text-center">
                         <div class="text-gray-500 text-sm">止损价</div>
                         <div class="text-lg font-bold text-red-600">{short.get('stop_loss', 0):.2f}</div>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-lg text-center">
+                        <div class="text-gray-500 text-sm">盈亏比</div>
+                        <div class="text-lg font-bold text-blue-600">{short.get('risk_reward', '-')}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="p-3 bg-green-50 rounded-lg text-center">
+                        <div class="text-gray-500 text-sm">利润空间</div>
+                        <div class="text-xl font-bold text-green-600">{short.get('profit_potential', '-')}</div>
+                    </div>
+                    <div class="p-3 bg-red-50 rounded-lg text-center">
+                        <div class="text-gray-500 text-sm">亏损空间</div>
+                        <div class="text-xl font-bold text-red-600">{short.get('loss_potential', '-')}</div>
                     </div>
                 </div>
                 <div class="space-y-1">'''
