@@ -852,7 +852,7 @@ class CompleteStockReporter:
         trend = tech.get('trend', 'N/A')
         rsi = tech.get('rsi', 50)
         macd = tech.get('macd_status', 'N/A')
-        rsi_str = f"{rsi:.1f}"
+        rsi_str = f"{rsi or 0:.1f}"
 
         # RSI分析
         if rsi > 70:

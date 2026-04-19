@@ -59,7 +59,7 @@ def interpret_rsi(rsi: float) -> Dict:
             'description': 'RSI超过80，市场极度乐观，短期可能回调',
             'color': '🔴'
         }
-    elif rsi >= 70:
+    elif rsi is not None and rsi >= 70:
         return {
             'status': '超买',
             'signal': '谨慎',
@@ -193,9 +193,9 @@ def interpret_trend(trend: str, rsi: float) -> str:
     base = interpretations.get(trend, '趋势分析中')
     
     # 结合 RSI
-    if rsi > 70:
+    if rsi is not None and rsi > 70:
         warning = '⚠️ 但RSI超买，短期可能回调'
-    elif rsi < 30:
+    elif rsi is not None and rsi < 30:
         warning = '⚠️ RSI超卖，可能迎来反弹'
     else:
         warning = ''
@@ -208,18 +208,18 @@ def get_technical_patterns(data: Dict) -> list:
     patterns = []
     
     tech = data.get('technical', {})
-    rsi = tech.get('rsi', 50)
-    macd_status = tech.get('macd_status', '')
-    trend = tech.get('trend', '')
+    rsi = tech.get('rsi') or 50
+    macd_status = tech.get('macd_status') or ''
+    trend = tech.get('trend') or ''
     
     # 金叉/死叉
-    if '金叉' in macd_status:
+    if macd_status and '金叉' in macd_status:
         patterns.append({
             'name': 'MACD金叉',
             'signal': '买入',
             'description': 'MACD快线上穿慢线，短期看涨信号'
         })
-    elif '死叉' in macd_status:
+    elif macd_status and '死叉' in macd_status:
         patterns.append({
             'name': 'MACD死叉',
             'signal': '卖出',
@@ -227,13 +227,13 @@ def get_technical_patterns(data: Dict) -> list:
         })
     
     # 超买超卖
-    if rsi >= 70:
+    if rsi is not None and rsi >= 70:
         patterns.append({
             'name': 'RSI超买',
             'signal': '卖出',
             'description': f'RSI={rsi:.1f}，短期可能回调'
         })
-    elif rsi <= 30:
+    elif rsi is not None and rsi <= 30:
         patterns.append({
             'name': 'RSI超卖',
             'signal': '买入',
@@ -268,13 +268,13 @@ def get_investment_advice(score: float, horizon: str, data: Dict) -> Dict:
         rsi = tech.get('rsi', 50)
         trend = tech.get('trend', '')
         
-        if rsi > 70:
+        if rsi is not None and rsi > 70:
             return {
                 'advice': '观望',
                 'reason': 'RSI超买，短线不宜追高',
                 'action': '等待回调'
             }
-        elif '多头' in trend:
+        elif trend and '多头' in trend:
             return {
                 'advice': '轻仓试多',
                 'reason': '趋势向上，可小仓位跟随',
@@ -314,7 +314,7 @@ def get_investment_advice(score: float, horizon: str, data: Dict) -> Dict:
         fund = data.get('fundamentals', {})
         roe = fund.get('roe', 0)
         
-        if roe > 15:
+        if roe is not None and roe > 15:
             return {
                 'advice': '长期持有',
                 'reason': f'ROE {roe:.1f}%，优质企业',
