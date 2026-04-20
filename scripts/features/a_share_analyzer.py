@@ -3002,6 +3002,7 @@ if __name__ == '__main__':
     parser.add_argument('symbol', help='股票代码')
     parser.add_argument('--html', action='store_true', help='生成HTML报告')
     parser.add_argument('--apple', action='store_true', help='生成Apple风格HTML报告')
+    parser.add_argument('--md', action='store_true', help='生成Markdown报告')
     args = parser.parse_args()
     
     analyzer = AShareAnalyzer()
@@ -3012,19 +3013,28 @@ if __name__ == '__main__':
     print(f" 📋 投资建议: {result['recommendation']}")
     print(f"{'='*70}")
     
-    if args.html or args.apple:
+    if args.html or args.apple or args.md:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         
-        if args.apple:
-            # Apple风格报告
-            from apple_reporter import generate_apple_report
-            html = generate_apple_report(result)
-            filename = f"{OUTPUT_DIR}/apple_{args.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        else:
-            # 标准HTML报告
-            html = analyzer.generate_html_report(result)
-            filename = f"{OUTPUT_DIR}/a_share_{args.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        # Markdown报告
+        if args.md:
+            from markdown_reporter import generate_markdown_report
+            md_content = generate_markdown_report(result)
+            md_filename = f"{OUTPUT_DIR}/{args.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            with open(md_filename, 'w', encoding='utf-8') as f:
+                f.write(md_content)
+            print(f"\n✅ Markdown报告已保存: {md_filename}")
         
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(html)
-        print(f"\n✅ HTML报告已保存: {filename}")
+        # HTML报告
+        if args.html or args.apple:
+            if args.apple:
+                from apple_reporter import generate_apple_report
+                html = generate_apple_report(result)
+                filename = f"{OUTPUT_DIR}/apple_{args.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            else:
+                html = analyzer.generate_html_report(result)
+                filename = f"{OUTPUT_DIR}/a_share_{args.symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(html)
+            print(f"\n✅ HTML报告已保存: {filename}")
