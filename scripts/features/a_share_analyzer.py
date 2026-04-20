@@ -47,6 +47,34 @@ try:
     PATTERN_DETECTOR_AVAILABLE = True
 except ImportError:
     PATTERN_DETECTOR_AVAILABLE = False
+
+# 导入专业绩效评估模块
+try:
+    from performance_metrics import PerformanceMetrics
+    PERFORMANCE_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_AVAILABLE = False
+
+# 导入专业风险管理模块
+try:
+    from risk_management_pro import RiskManager
+    RISK_PRO_AVAILABLE = True
+except ImportError:
+    RISK_PRO_AVAILABLE = False
+
+# 导入专业估值模块
+try:
+    from valuation_pro import ValuationModels
+    VALUATION_PRO_AVAILABLE = True
+except ImportError:
+    VALUATION_PRO_AVAILABLE = False
+
+# 导入专业技术指标模块
+try:
+    from technical_indicators_pro import TechnicalIndicators
+    TECHNICAL_PRO_AVAILABLE = True
+except ImportError:
+    TECHNICAL_PRO_AVAILABLE = False
     RESEARCH_AVAILABLE = False
 
 # 导入财报分析模块
@@ -1853,6 +1881,15 @@ class AShareAnalyzer:
         <!-- 6. 深度研报 -->
         {self._research_html(result)}
         
+        <!-- 6.1 专业绩效评估 -->
+        {self._performance_metrics_html(result)}
+        
+        <!-- 6.2 专业风险管理 -->
+        {self._risk_pro_html(result)}
+        
+        <!-- 6.3 专业估值模型 -->
+        {self._valuation_pro_html(result)}
+        
         <!-- 7. 汇总分析 -->
         <div class="card p-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50">
             <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>💡</span> 汇总分析</h2>
@@ -2503,6 +2540,316 @@ class AShareAnalyzer:
         for p in points:
             html += f'<div class="p-3 bg-white rounded-lg">{p}</div>'
         return html
+    
+    def _performance_metrics_html(self, result: Dict) -> str:
+        """专业绩效评估HTML"""
+        if not PERFORMANCE_AVAILABLE:
+            return ''
+        
+        try:
+            # 获取历史数据计算绩效
+            symbol = result['symbol']
+            if symbol.isdigit():
+                if symbol.startswith('6'):
+                    yf_symbol = f"{symbol}.SS"
+                elif symbol.startswith(('0', '3')):
+                    yf_symbol = f"{symbol}.SZ"
+                else:
+                    yf_symbol = symbol
+            else:
+                yf_symbol = symbol
+            
+            ticker = yf.Ticker(yf_symbol)
+            hist = ticker.history(period='1y')
+            
+            if hist.empty:
+                return ''
+            
+            # 计算绩效指标
+            returns = hist['Close'].pct_change().dropna()
+            
+            # 简化计算，避免None值
+            total_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0] - 1)
+            annual_return = total_return * (252 / len(hist))  # 年化
+            annual_vol = returns.std() * np.sqrt(252) if len(returns) > 0 else 0
+            
+            # 夏普比率
+            excess_returns = returns - 0.03/252  # 无风险利率3%
+            sharpe = (excess_returns.mean() / returns.std() * np.sqrt(252)) if returns.std() > 0 else 0
+            
+            # 索提诺比率
+            negative_returns = returns[returns < 0]
+            downside_std = negative_returns.std() if len(negative_returns) > 0 else 0
+            sortino = (excess_returns.mean() / downside_std * np.sqrt(252)) if downside_std > 0 else 0
+            
+            # 最大回撤
+            equity = (1 + returns).cumprod()
+            running_max = equity.cummax()
+            drawdown = (equity - running_max) / running_max
+            max_dd = drawdown.min()
+            
+            # VaR/CVaR
+            var_95 = -np.percentile(returns, 5) if len(returns) > 0 else 0
+            cvar_95 = -returns[returns < -var_95].mean() if len(returns[returns < -var_95]) > 0 else var_95
+            
+            # 评级
+            score = 0
+            if annual_return > 0.20:
+                score += 30
+            elif annual_return > 0.10:
+                score += 20
+            elif annual_return > 0:
+                score += 10
+            
+            if sharpe > 1.5:
+                score += 30
+            elif sharpe > 1.0:
+                score += 20
+            elif sharpe > 0.5:
+                score += 10
+            
+            if max_dd > -0.10:
+                score += 20
+            elif max_dd > -0.20:
+                score += 15
+            elif max_dd > -0.30:
+                score += 10
+            
+            if sortino > 2.0:
+                score += 20
+            elif sortino > 1.5:
+                score += 15
+            elif sortino > 1.0:
+                score += 10
+            
+            if score >= 80:
+                grade = 'A'
+                desc = '卓越表现，机构级水平'
+            elif score >= 65:
+                grade = 'B'
+                desc = '良好表现，推荐使用'
+            elif score >= 50:
+                grade = 'C'
+                desc = '中等表现，谨慎使用'
+            else:
+                grade = 'D'
+                desc = '表现一般，需改进'
+            
+            return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>📊</span> 专业绩效评估</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">年化收益</div>
+                    <div class="text-xl font-bold">{annual_return*100:.1f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">年化波动</div>
+                    <div class="text-xl font-bold">{annual_vol*100:.1f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">夏普比率</div>
+                    <div class="text-xl font-bold">{sharpe:.2f}</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">索提诺比率</div>
+                    <div class="text-xl font-bold">{sortino:.2f}</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">最大回撤</div>
+                    <div class="text-xl font-bold text-red-600">{max_dd*100:.1f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">VaR(95%)</div>
+                    <div class="text-xl font-bold">{var_95*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg">
+                    <div class="text-gray-500 text-sm">CVaR(95%)</div>
+                    <div class="text-xl font-bold">{cvar_95*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-4 rounded-lg text-center">
+                    <div class="text-gray-500 text-sm">评级</div>
+                    <div class="text-2xl font-bold" style="color: {'#27ae60' if score >= 60 else '#f39c12' if score >= 40 else '#e74c3c'}">{grade}</div>
+                    <div class="text-xs text-gray-400">{score}/100</div>
+                </div>
+            </div>
+            
+            <div class="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                📝 {desc}
+            </div>
+        </div>'''
+        except Exception as e:
+            return f'<div class="card p-6 mb-6"><p class="text-gray-500">⚠️ 绩效分析失败: {e}</p></div>'
+    
+    def _risk_pro_html(self, result: Dict) -> str:
+        """专业风险管理HTML"""
+        if not RISK_PRO_AVAILABLE:
+            return ''
+        
+        try:
+            symbol = result['symbol']
+            current_price = result['price']['current']
+            
+            # 假设持仓
+            positions = {'股票': 100000}
+            
+            # 获取历史数据
+            if symbol.isdigit():
+                if symbol.startswith('6'):
+                    yf_symbol = f"{symbol}.SS"
+                elif symbol.startswith(('0', '3')):
+                    yf_symbol = f"{symbol}.SZ"
+                else:
+                    yf_symbol = symbol
+            else:
+                yf_symbol = symbol
+            
+            ticker = yf.Ticker(yf_symbol)
+            hist = ticker.history(period='1y')
+            
+            if hist.empty:
+                return ''
+            
+            returns = hist['Close'].pct_change().dropna()
+            rm = RiskManager(positions=positions)
+            
+            # VaR计算
+            var_90 = rm.var_historical(returns, 0.90)
+            var_95 = rm.var_historical(returns, 0.95)
+            var_99 = rm.var_historical(returns, 0.99)
+            cvar_95 = rm.cvar(returns, 0.95)
+            
+            # 压力测试
+            stress_scenarios = {
+                '温和下跌': {'股票': -0.10},
+                '中度下跌': {'股票': -0.20},
+                '严重下跌': {'股票': -0.35},
+                '极端下跌': {'股票': -0.50}
+            }
+            stress_results = rm.stress_test(positions, stress_scenarios)
+            
+            stress_html = ''
+            for scenario, res in stress_results.items():
+                color = '#27ae60' if res['loss_pct'] > -0.15 else ('#f39c12' if res['loss_pct'] > -0.30 else '#e74c3c')
+                stress_html += f'<div class="flex justify-between p-2 bg-gray-50 rounded"><span>{scenario}</span><span style="color: {color}">{res["loss_pct"]*100:+.1f}%</span></div>'
+            
+            return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>⚠️</span> 专业风险管理</h2>
+            
+            <div class="grid grid-cols-3 md:grid-cols-5 gap-3 mb-4">
+                <div class="metric-card p-3 rounded-lg text-center">
+                    <div class="text-gray-500 text-xs">VaR(90%)</div>
+                    <div class="text-lg font-bold">{var_90*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg text-center">
+                    <div class="text-gray-500 text-xs">VaR(95%)</div>
+                    <div class="text-lg font-bold">{var_95*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg text-center">
+                    <div class="text-gray-500 text-xs">VaR(99%)</div>
+                    <div class="text-lg font-bold text-red-600">{var_99*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg text-center">
+                    <div class="text-gray-500 text-xs">CVaR(95%)</div>
+                    <div class="text-lg font-bold">{cvar_95*100:.2f}%</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg text-center">
+                    <div class="text-gray-500 text-xs">风险等级</div>
+                    <div class="text-lg font-bold">{'低' if var_95 < 0.03 else ('中' if var_95 < 0.05 else '高')}</div>
+                </div>
+            </div>
+            
+            <h3 class="font-bold text-gray-700 mb-2">🔥 压力测试</h3>
+            <div class="space-y-2">
+                {stress_html}
+            </div>
+        </div>'''
+        except Exception as e:
+            return f'<div class="card p-6 mb-6"><p class="text-gray-500">⚠️ 风险分析失败: {e}</p></div>'
+    
+    def _valuation_pro_html(self, result: Dict) -> str:
+        """专业估值模型HTML"""
+        if not VALUATION_PRO_AVAILABLE:
+            return ''
+        
+        try:
+            symbol = result['symbol']
+            current_price = result['price']['current']
+            
+            if symbol.isdigit():
+                if symbol.startswith('6'):
+                    yf_symbol = f"{symbol}.SS"
+                elif symbol.startswith(('0', '3')):
+                    yf_symbol = f"{symbol}.SZ"
+                else:
+                    yf_symbol = symbol
+            else:
+                yf_symbol = symbol
+            
+            # 简单DCF估值 (假设FCF)
+            vm = ValuationModels(yf_symbol)
+            
+            # 假设当前FCF = 市值 * 5%
+            market_cap = result['valuation'].get('market_cap', 1e10)
+            current_fcf = market_cap * 0.05
+            
+            # WACC计算
+            beta = result['technical'].get('beta', 1.0)
+            wacc = vm.calculate_wacc(beta)
+            
+            # 两阶段DCF
+            dcf_2 = vm.dcf_two_stage(current_fcf, wacc=wacc)
+            dcf_3 = vm.dcf_three_stage(current_fcf, wacc=wacc)
+            dcf_h = vm.dcf_h_model(current_fcf, wacc=wacc)
+            
+            # 相对估值
+            eps = result['valuation'].get('eps', 0)
+            pe = result['valuation'].get('pe', 0)
+            
+            rel_html = ''
+            if eps and eps > 0:
+                pe_fair = eps * 20  # 假设行业PE=20
+                rel_html = f'''
+                <div class="metric-card p-3 rounded-lg">
+                    <div class="text-gray-500 text-xs">PE估值</div>
+                    <div class="text-lg font-bold">{pe_fair:.2f}</div>
+                    <div class="text-xs text-gray-400">{(pe_fair/current_price - 1)*100:+.1f}%</div>
+                </div>'''
+            
+            return f'''
+        <div class="card p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>💰</span> 专业估值模型</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="metric-card p-3 rounded-lg">
+                    <div class="text-gray-500 text-xs">DCF两阶段</div>
+                    <div class="text-lg font-bold">{dcf_2['enterprise_value']/1e9:.1f}B</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg">
+                    <div class="text-gray-500 text-xs">DCF三阶段</div>
+                    <div class="text-lg font-bold">{dcf_3['enterprise_value']/1e9:.1f}B</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg">
+                    <div class="text-gray-500 text-xs">H模型</div>
+                    <div class="text-lg font-bold">{dcf_h['enterprise_value']/1e9:.1f}B</div>
+                </div>
+                <div class="metric-card p-3 rounded-lg">
+                    <div class="text-gray-500 text-xs">WACC</div>
+                    <div class="text-lg font-bold">{wacc*100:.1f}%</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3">
+                {rel_html}
+            </div>
+        </div>'''
+        except Exception as e:
+            return f'<div class="card p-6 mb-6"><p class="text-gray-500">⚠️ 估值分析失败: {e}</p></div>'
 
 
 if __name__ == '__main__':
