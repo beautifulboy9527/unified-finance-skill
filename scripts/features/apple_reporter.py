@@ -501,6 +501,110 @@ class AppleStyleReporter:
         </div>
     </section>
     
+    <!-- 事件驱动 -->
+    <section class="px-4 py-10">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-8 fade-in">
+                <h2 class="text-3xl font-bold mb-1">事件驱动</h2>
+                <p class="text-gray-500 text-xs">利好事件与风险因素</p>
+            </div>
+            
+            <div class="card rounded-2xl p-6 fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-lg font-bold mb-3 text-green-400"><i class="fas fa-check-circle mr-2"></i>利好事件</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-start gap-2 p-2 bg-green-900/10 rounded">
+                                <span class="text-green-400">✓</span>
+                                <div>
+                                    <div class="font-semibold text-sm">业绩催化</div>
+                                    <div class="text-xs text-gray-400">年报发布、Q1预告增长</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2 p-2 bg-green-900/10 rounded">
+                                <span class="text-green-400">✓</span>
+                                <div>
+                                    <div class="font-semibold text-sm">行业热点</div>
+                                    <div class="text-xs text-gray-400">AI/数据中心/消费电子</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2 p-2 bg-green-900/10 rounded">
+                                <span class="text-green-400">✓</span>
+                                <div>
+                                    <div class="font-semibold text-sm">政策支持</div>
+                                    <div class="text-xs text-gray-400">相关产业政策利好</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-3 text-red-400"><i class="fas fa-exclamation-triangle mr-2"></i>风险因素</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-start gap-2 p-2 bg-red-900/10 rounded">
+                                <span class="text-red-400">⚠</span>
+                                <div>
+                                    <div class="font-semibold text-sm">原材料价格</div>
+                                    <div class="text-xs text-gray-400">铜、铝、钢等原材料波动</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2 p-2 bg-red-900/10 rounded">
+                                <span class="text-red-400">⚠</span>
+                                <div>
+                                    <div class="font-semibold text-sm">汇率波动</div>
+                                    <div class="text-xs text-gray-400">出口业务汇率风险</div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2 p-2 bg-red-900/10 rounded">
+                                <span class="text-red-400">⚠</span>
+                                <div>
+                                    <div class="font-semibold text-sm">行业周期</div>
+                                    <div class="text-xs text-gray-400">消费电子周期性波动</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 评分拆分 -->
+    <section class="px-4 py-10">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-8 fade-in">
+                <h2 class="text-3xl font-bold mb-1">评分拆分</h2>
+                <p class="text-gray-500 text-xs">配置分（中长期）与交易分（短线）</p>
+            </div>
+            
+            <div class="card rounded-2xl p-6 fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gradient-to-br from-blue-900/20 to-blue-800/10 rounded-lg p-6">
+                        <h3 class="text-lg font-bold mb-2">配置分（中长期）</h3>
+                        <div class="text-4xl font-bold gradient-text mb-4">69/100</div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-400">估值分</span><span class="font-bold">5</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">质量分</span><span class="font-bold">22</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">风险分</span><span class="font-bold">17</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">事件分</span><span class="font-bold">25</span></div>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-400">中长期基本面：偏强</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-900/20 to-purple-800/10 rounded-lg p-6">
+                        <h3 class="text-lg font-bold mb-2">交易分（短线）</h3>
+                        <div class="text-4xl font-bold mb-4" style="color: #a78bfa">54/100</div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-400">趋势分</span><span class="font-bold">12</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">位置分</span><span class="font-bold">20</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">量能分</span><span class="font-bold">12</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">情绪分</span><span class="font-bold">10</span></div>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-400">短线位置：偏热，不适合追高</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
     <!-- 雷达图 -->
     <section class="px-4 py-10">
         <div class="max-w-7xl mx-auto">
