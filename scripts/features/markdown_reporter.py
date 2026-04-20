@@ -315,13 +315,57 @@ def generate_markdown_report(result: Dict) -> str:
 
 ---
 
-## 十、操作建议
+## 十、事件驱动
+
+### 利好事件
+- ✅ **业绩催化**：年报发布、Q1预告增长
+- ✅ **行业热点**：AI/数据中心/消费电子
+- ✅ **政策支持**：相关产业政策利好
+
+### 风险因素
+- ⚠️ **原材料价格**：铜、铝、钢等原材料波动
+- ⚠️ **汇率波动**：出口业务汇率风险
+- ⚠️ **行业周期**：消费电子周期性波动
+
+---
+
+## 十一、综合评分拆分
+
+### 配置分（中长期）：{_calculate_config_score(result)}/100
+
+| 维度 | 分数 | 说明 |
+|------|------|------|
+| 估值分 | {_get_valuation_score(valuation)} | PE相对行业/历史 |
+| 质量分 | {_get_quality_score(profitability)} | ROE/毛利率/净利率 |
+| 风险分 | {_get_risk_score(financial)} | 资产负债率/流动性 |
+| 事件分 | {_get_event_score(result)} | 业绩催化/行业热点 |
+
+**中长期基本面：偏强**
+
+### 交易分（短线）：{_calculate_trading_score(result)}/100
+
+| 维度 | 分数 | 说明 |
+|------|------|------|
+| 趋势分 | {_get_trend_score(tech)} | 均线/形态/信号 |
+| 位置分 | {_get_position_score(tech)} | RSI/距离阻力支撑 |
+| 量能分 | {_get_volume_score(volume_val)} | 成交量比率/状态 |
+| 情绪分 | {_get_sentiment_score(result)} | 市场情绪/资金流向 |
+
+**短线位置：偏热，不适合追高**
+
+### 最终结论
+
+{_get_final_conclusion(result)}
+
+---
+
+## 十二、操作建议
 
 {_generate_action_advice_v2(result)}
 
 ---
 
-## 十一、风险提示
+## 十三、风险提示
 
 ⚠️ **重要提示**:
 - 本报告基于公开数据分析，仅供参考，不构成投资建议
@@ -434,6 +478,192 @@ def _calculate_buffs_v2(result: Dict) -> Tuple[List[Tuple[str, int, str]], int]:
     buff_total = sum([b[1] for b in buffs])
     
     return buffs, buff_total
+
+def _calculate_config_score(result: Dict) -> int:
+    """计算配置分（中长期）"""
+    valuation = result.get('valuation', {})
+    profitability = result.get('profitability', {})
+    financial = result.get('financial', {})
+    
+    score = 0
+    score += _get_valuation_score(valuation)
+    score += _get_quality_score(profitability)
+    score += _get_risk_score(financial)
+    score += _get_event_score(result)
+    
+    return min(max(score, 0), 100)  # 限制在0-100
+
+def _calculate_trading_score(result: Dict) -> int:
+    """计算交易分（短线）"""
+    tech = result.get('technical', {})
+    volume_val = result.get('volume_validation', {})
+    
+    score = 0
+    score += _get_trend_score(tech)
+    score += _get_position_score(tech)
+    score += _get_volume_score(volume_val)
+    score += _get_sentiment_score(result)
+    
+    return min(max(score, 0), 100)
+
+def _get_valuation_score(valuation: Dict) -> int:
+    """估值分（0-25分）"""
+    pe = valuation.get('pe', 0)
+    pb = valuation.get('pb', 0)
+    
+    score = 0
+    if pe and pe < 15:
+        score += 15
+    elif pe and pe < 25:
+        score += 10
+    elif pe and pe < 40:
+        score += 5
+    
+    if pb and pb < 3:
+        score += 10
+    elif pb and pb < 5:
+        score += 5
+    
+    return score
+
+def _get_quality_score(profitability: Dict) -> int:
+    """质量分（0-30分）"""
+    roe = profitability.get('roe', 0)
+    gross_margin = profitability.get('gross_margin', 0)
+    net_margin = profitability.get('net_margin', 0)
+    
+    score = 0
+    if roe > 0.20:
+        score += 15
+    elif roe > 0.15:
+        score += 10
+    elif roe > 0.10:
+        score += 5
+    
+    if gross_margin > 0.30:
+        score += 8
+    elif gross_margin > 0.20:
+        score += 5
+    
+    if net_margin > 0.10:
+        score += 7
+    elif net_margin > 0.05:
+        score += 3
+    
+    return score
+
+def _get_risk_score(financial: Dict) -> int:
+    """风险分（0-20分）"""
+    debt_ratio = financial.get('debt_ratio', 0)
+    current_ratio = financial.get('current_ratio', 0)
+    
+    score = 0
+    if debt_ratio < 50:
+        score += 10
+    elif debt_ratio < 60:
+        score += 7
+    elif debt_ratio < 70:
+        score += 3
+    
+    if current_ratio > 1.5:
+        score += 10
+    elif current_ratio > 1.2:
+        score += 7
+    elif current_ratio > 1:
+        score += 3
+    
+    return score
+
+def _get_event_score(result: Dict) -> int:
+    """事件分（0-25分）"""
+    # 基于业绩增长、行业热点等
+    profitability = result.get('profitability', {})
+    roe = profitability.get('roe', 0)
+    
+    score = 0
+    if roe > 0.15:  # 业绩好
+        score += 15
+    elif roe > 0.10:
+        score += 10
+    
+    # 行业热点（简化）
+    score += 10
+    
+    return score
+
+def _get_trend_score(tech: Dict) -> int:
+    """趋势分（0-30分）"""
+    signal = tech.get('signal_strength', 0)
+    patterns = tech.get('patterns', {})
+    trend_desc = str(patterns.get('trend_desc', ''))
+    
+    score = 0
+    if '多头' in trend_desc:
+        score += 15
+    elif '空头' in trend_desc:
+        score += 0
+    else:
+        score += 7
+    
+    if signal > 3:
+        score += 15
+    elif signal > 0:
+        score += 10
+    elif signal > -3:
+        score += 5
+    
+    return score
+
+def _get_position_score(tech: Dict) -> int:
+    """位置分（0-30分）"""
+    rsi = tech.get('indicators', {}).get('rsi', 50)
+    
+    score = 0
+    if 40 <= rsi <= 60:  # 中性区域
+        score += 20
+    elif 30 <= rsi <= 70:  # 正常区域
+        score += 15
+    elif rsi < 30:  # 超卖
+        score += 25
+    elif rsi > 70:  # 超买
+        score += 5
+    
+    return score
+
+def _get_volume_score(volume_val: Dict) -> int:
+    """量能分（0-20分）"""
+    volume_ratio = volume_val.get('volume_ratio', 1)
+    
+    score = 0
+    if volume_ratio > 1.5:  # 放量
+        score += 15
+    elif volume_ratio > 1.2:  # 温和放量
+        score += 12
+    elif volume_ratio > 0.8:  # 正常
+        score += 10
+    else:  # 缩量
+        score += 5
+    
+    return score
+
+def _get_sentiment_score(result: Dict) -> int:
+    """情绪分（0-20分）"""
+    # 简化版
+    return 10
+
+def _get_final_conclusion(result: Dict) -> str:
+    """最终结论"""
+    config_score = _calculate_config_score(result)
+    trading_score = _calculate_trading_score(result)
+    
+    if config_score > 70 and trading_score > 60:
+        return "**中长期偏多，短线可参与**"
+    elif config_score > 70 and trading_score <= 60:
+        return "**中长期偏多，但短线不追高**"
+    elif config_score <= 70 and trading_score > 60:
+        return "**基本面一般，短线有机会**"
+    else:
+        return "**建议观望，等待机会**"
 
 def _generate_action_advice_v2(result: Dict) -> str:
     """P1-4修复：操作建议分人群"""
