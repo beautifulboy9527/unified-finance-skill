@@ -200,9 +200,11 @@ def generate_markdown_report(result: Dict) -> str:
 
     # P0-3修复：N/A字段降级处理
     volume_ratio = volume_val.get('volume_ratio', 1)
-    volume_status = volume_val.get('status', 'N/A')
+    volume_status = volume_val.get('status', volume_val.get('vp_signal', 'N/A'))
+    volume_level = volume_val.get('volume_level_cn', '正常')
+    vp_pattern = volume_val.get('vp_pattern', 'N/A')
     
-    if volume_status == 'N/A' or not volume_status:
+    if not volume_val.get('available', False) or volume_status == 'N/A':
         md += f'''**成交量比率**: {volume_ratio:.2f}x（相对20日均量）
 
 **成交量状态**: 数据不足，暂不判定量价关系
@@ -214,6 +216,7 @@ def generate_markdown_report(result: Dict) -> str:
 |------|------|------|
 | 成交量比率 | **{volume_ratio:.2f}x** | {_get_volume_eval(volume_ratio)} |
 | 成交量状态 | **{volume_status}** | - |
+| 量价关系 | **{vp_pattern}** | - |
 
 **成交量解读**: {volume_val.get('analysis', '暂无分析')}
 '''
@@ -231,19 +234,24 @@ def generate_markdown_report(result: Dict) -> str:
 '''
 
     # P0-1修复：ATR止损计算
+    # 字段名兼容处理
     atr = risk_mgmt.get('atr', 0)
+    stop_loss_std_raw = risk_mgmt.get('stop_loss_std', risk_mgmt.get('stop_loss_standard', 0))
+    stop_loss_conservative_raw = risk_mgmt.get('stop_loss_conservative', 0)
     
-    if current_price > 0 and atr > 0:
+    # 如果有ATR但没有止损位，重新计算
+    if current_price > 0 and atr > 0 and stop_loss_std_raw <= 0:
         stop_loss_levels = calculate_stop_loss_levels(current_price, atr)
         stop_loss_std = stop_loss_levels['stop_loss_std']
         stop_loss_conservative = stop_loss_levels['stop_loss_conservative']
         stop_loss_pct_std = stop_loss_levels['stop_loss_pct_std']
         stop_loss_pct_conservative = stop_loss_levels['stop_loss_pct_conservative']
     else:
-        stop_loss_std = 0
-        stop_loss_conservative = 0
-        stop_loss_pct_std = 0
-        stop_loss_pct_conservative = 0
+        # 使用已有数据
+        stop_loss_std = stop_loss_std_raw
+        stop_loss_conservative = stop_loss_conservative_raw
+        stop_loss_pct_std = risk_mgmt.get('stop_loss_pct_std', risk_mgmt.get('stop_loss_pct_standard', 0))
+        stop_loss_pct_conservative = risk_mgmt.get('stop_loss_pct_conservative', 0)
     
     md += f'''### 7.1 ATR止损建议
 
