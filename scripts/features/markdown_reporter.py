@@ -9,6 +9,7 @@
 """
 
 import sys
+import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime
 
