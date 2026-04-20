@@ -22,6 +22,13 @@ if sys.platform == 'win32':
 
 OUTPUT_DIR = r'D:\OpenClaw\outputs\reports'
 
+# 导入多数据源管理器
+try:
+    from multi_source_manager import MultiSourceManager
+    MULTI_SOURCE_AVAILABLE = True
+except ImportError:
+    MULTI_SOURCE_AVAILABLE = False
+
 # 导入深度研报模块
 try:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
