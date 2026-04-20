@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-完整Markdown报告生成器 v1.0
-- 包含所有分析模块
+完整Markdown报告生成器 v2.0
+- 修复数据获取问题
+- 完整的支撑阻力位、成交量、风险管理数据
 - 详细解读
-- 中文为主
 """
 
 import sys
@@ -22,6 +22,15 @@ def generate_markdown_report(result: Dict) -> str:
     name_cn = result.get('name_cn', symbol)
     score = result.get('score', 0)
     recommendation = result.get('recommendation', 'N/A')
+    
+    # 安全获取数据
+    tech = result.get('technical', {})
+    patterns = tech.get('patterns', {})
+    financial = result.get('financial', {})
+    valuation = result.get('valuation', {})
+    profitability = result.get('profitability', {})
+    risk_mgmt = result.get('risk_management', {})
+    volume_val = result.get('volume_validation', {})
     
     md = f'''# 📊 {name_cn} ({symbol}) 投资分析报告
 
@@ -43,7 +52,7 @@ def generate_markdown_report(result: Dict) -> str:
 | 所属板块 | {result.get('industry', {}).get('sector', 'N/A')} |
 | 当前价格 | **{result.get('price', {}).get('current', 0):.2f}元** |
 | 今日涨跌 | **{result.get('price', {}).get('change_pct', 0):+.2f}%** |
-| 总市值 | {result.get('valuation', {}).get('market_cap_str', 'N/A')} |
+| 总市值 | {valuation.get('market_cap_str', 'N/A')} |
 
 ---
 
@@ -70,14 +79,14 @@ def generate_markdown_report(result: Dict) -> str:
 
 | 指标 | 数值 | 评价 |
 |------|------|------|
-| 市盈率 PE | **{result.get('valuation', {}).get('pe', 0):.2f}** | {_get_pe_eval(result.get('valuation', {}).get('pe', 0))} |
-| 市净率 PB | **{result.get('valuation', {}).get('pb', 0):.2f}** | {_get_pb_eval(result.get('valuation', {}).get('pb', 0))} |
-| 市销率 PS | **{result.get('valuation', {}).get('ps', 0):.2f}** | - |
-| 总市值 | **{result.get('valuation', {}).get('market_cap_str', 'N/A')}** | - |
+| 市盈率 PE | **{valuation.get('pe', 0):.2f}** | {_get_pe_eval(valuation.get('pe', 0))} |
+| 市净率 PB | **{valuation.get('pb', 0):.2f}** | {_get_pb_eval(valuation.get('pb', 0))} |
+| 市销率 PS | **{valuation.get('ps', 0):.2f}** | - |
+| 总市值 | **{valuation.get('market_cap_str', 'N/A')}** | - |
 
 ### 3.2 估值分析解读
 
-{result.get('valuation', {}).get('analysis', '暂无分析')}
+{valuation.get('analysis', '暂无分析')}
 
 ---
 
@@ -87,14 +96,14 @@ def generate_markdown_report(result: Dict) -> str:
 
 | 指标 | 数值 | 评价 |
 |------|------|------|
-| 净资产收益率 ROE | **{result.get('profitability', {}).get('roe', 0)*100:.2f}%** | {_get_roe_eval(result.get('profitability', {}).get('roe', 0))} |
-| 毛利率 | **{result.get('profitability', {}).get('gross_margin', 0)*100:.2f}%** | - |
-| 净利率 | **{result.get('profitability', {}).get('net_margin', 0)*100:.2f}%** | - |
-| 盈利状态 | **{'盈利' if result.get('profitability', {}).get('is_profitable') else '亏损'}** | {'✅' if result.get('profitability', {}).get('is_profitable') else '❌'} |
+| 净资产收益率 ROE | **{profitability.get('roe', 0)*100:.2f}%** | {_get_roe_eval(profitability.get('roe', 0))} |
+| 毛利率 | **{profitability.get('gross_margin', 0)*100:.2f}%** | - |
+| 净利率 | **{profitability.get('net_margin', 0)*100:.2f}%** | - |
+| 盈利状态 | **{'盈利' if profitability.get('is_profitable') else '亏损'}** | {'✅' if profitability.get('is_profitable') else '❌'} |
 
 ### 4.2 盈利能力解读
 
-{result.get('profitability', {}).get('analysis', '暂无分析')}
+{profitability.get('analysis', '暂无分析')}
 
 ---
 
@@ -104,17 +113,17 @@ def generate_markdown_report(result: Dict) -> str:
 
 | 指标 | 数值 | 评价 |
 |------|------|------|
-| 资产负债率 | **{result.get('financial', {}).get('debt_ratio', 0):.2f}%** | {_get_debt_eval(result.get('financial', {}).get('debt_ratio', 0))} |
-| 流动比率 | **{result.get('financial', {}).get('current_ratio', 0):.2f}** | {_get_liquidity_eval(result.get('financial', {}).get('current_ratio', 0))} |
-| 财务状态 | **{result.get('financial', {}).get('status', 'N/A')}** | - |
+| 资产负债率 | **{financial.get('debt_ratio', 0):.2f}%** | {_get_debt_eval(financial.get('debt_ratio', 0))} |
+| 流动比率 | **{financial.get('current_ratio', 0):.2f}** | {_get_liquidity_eval(financial.get('current_ratio', 0))} |
+| 财务状态 | **{financial.get('status', 'N/A')}** | - |
 
-**数据来源**: {result.get('financial', {}).get('data_source', '财报')} (置信度: {result.get('financial', {}).get('confidence', 0)*100:.0f}%)
+**数据来源**: {financial.get('data_source', '财报')} (置信度: {financial.get('confidence', 0)*100:.0f}%)
 
 ### 5.2 风险提示
 
 '''
 
-    risks = result.get('financial', {}).get('risks', [])
+    risks = financial.get('risks', [])
     if risks:
         for risk in risks:
             md += f"- ⚠️ {risk}\n"
@@ -124,7 +133,7 @@ def generate_markdown_report(result: Dict) -> str:
     md += f'''
 ### 5.3 财务健康解读
 
-{result.get('financial', {}).get('analysis', '暂无分析')}
+{financial.get('analysis', '暂无分析')}
 
 ---
 
@@ -134,18 +143,16 @@ def generate_markdown_report(result: Dict) -> str:
 
 | 指标 | 数值 | 状态 |
 |------|------|------|
-| RSI 相对强弱 | **{result.get('technical', {}).get('indicators', {}).get('rsi', 50):.1f}** | {result.get('technical', {}).get('patterns', {}).get('rsi_desc', 'N/A')} |
-| MACD 状态 | **{str(result.get('technical', {}).get('patterns', {}).get('macd_desc', 'N/A')).split('(')[0].strip()}** | {'看涨' if '金叉' in str(result.get('technical', {}).get('patterns', {}).get('macd_desc', '')) else '看跌'} |
-| 趋势判断 | **{str(result.get('technical', {}).get('patterns', {}).get('trend_desc', 'N/A')).split('(')[0].strip()}** | - |
-| 信号强度 | **{result.get('technical', {}).get('signal_strength', 0)}** | - |
+| RSI 相对强弱 | **{tech.get('indicators', {}).get('rsi', 50):.1f}** | {patterns.get('rsi_desc', 'N/A')} |
+| MACD 状态 | **{str(patterns.get('macd_desc', 'N/A')).split('(')[0].strip()}** | {'看涨' if '金叉' in str(patterns.get('macd_desc', '')) else '看跌'} |
+| 趋势判断 | **{str(patterns.get('trend_desc', 'N/A')).split('(')[0].strip()}** | - |
+| 信号强度 | **{tech.get('signal_strength', 0)}** | - |
 
 ### 6.2 技术形态分析
 
 '''
 
     # 技术形态
-    patterns = result.get('technical', {}).get('patterns', {})
-    
     if patterns.get('trend_desc'):
         md += f"- **趋势**: {patterns['trend_desc']}\n"
     if patterns.get('rsi_desc'):
@@ -159,34 +166,44 @@ def generate_markdown_report(result: Dict) -> str:
     if patterns.get('double_bottom_desc'):
         md += f"- **形态**: {patterns['double_bottom_desc']}\n"
     
+    # 支撑阻力位 - 从patterns获取
+    support_near = patterns.get('support_near', 0)
+    support_far = patterns.get('support_far', 0)
+    resistance_near = patterns.get('resistance_near', 0)
+    resistance_far = patterns.get('resistance_far', 0)
+    support_near_pct = patterns.get('support_near_pct', 0)
+    support_far_pct = patterns.get('support_far_pct', 0)
+    resistance_near_pct = patterns.get('resistance_near_pct', 0)
+    resistance_far_pct = patterns.get('resistance_far_pct', 0)
+    
     md += f'''
 
 ### 6.3 支撑阻力位
 
 | 类型 | 价位 | 距离 |
 |------|------|------|
-| 近期支撑 | **{result.get('technical', {}).get('support_near', 0):.2f}元** | {result.get('technical', {}).get('support_near_pct', 0):.1f}% |
-| 远期支撑 | **{result.get('technical', {}).get('support_far', 0):.2f}元** | {result.get('technical', {}).get('support_far_pct', 0):.1f}% |
-| 近期阻力 | **{result.get('technical', {}).get('resistance_near', 0):.2f}元** | +{result.get('technical', {}).get('resistance_near_pct', 0):.1f}% |
-| 远期阻力 | **{result.get('technical', {}).get('resistance_far', 0):.2f}元** | +{result.get('technical', {}).get('resistance_far_pct', 0):.1f}% |
+| 近期支撑 | **{support_near:.2f}元** | {support_near_pct:.1f}% |
+| 远期支撑 | **{support_far:.2f}元** | {support_far_pct:.1f}% |
+| 近期阻力 | **{resistance_near:.2f}元** | +{resistance_near_pct:.1f}% |
+| 远期阻力 | **{resistance_far:.2f}元** | +{resistance_far_pct:.1f}% |
 
-**支撑解读**: {result.get('technical', {}).get('patterns', {}).get('support_desc', '暂无数据')}
+**支撑解读**: {patterns.get('support_desc', '暂无数据')}
 
-**阻力解读**: {result.get('technical', {}).get('patterns', {}).get('resistance_desc', '暂无数据')}
+**阻力解读**: {patterns.get('resistance_desc', '暂无数据')}
 
 ### 6.4 成交量验证
 
 | 指标 | 数值 | 状态 |
 |------|------|------|
-| 成交量比率 | **{result.get('volume_validation', {}).get('volume_ratio', 1):.2f}x** | {_get_volume_eval(result.get('volume_validation', {}).get('volume_ratio', 1))} |
-| 成交量状态 | **{result.get('volume_validation', {}).get('status', 'N/A')}** | - |
-| 趋势确认 | **{result.get('volume_validation', {}).get('trend_confirmation', 'N/A')}** | - |
+| 成交量比率 | **{volume_val.get('volume_ratio', 1):.2f}x** | {_get_volume_eval(volume_val.get('volume_ratio', 1))} |
+| 成交量状态 | **{volume_val.get('status', '正常')}** | - |
+| 趋势确认 | **{volume_val.get('trend_confirmation', '中性')}** | - |
 
-**成交量解读**: {result.get('volume_validation', {}).get('analysis', '暂无分析')}
+**成交量解读**: {volume_val.get('analysis', '暂无分析')}
 
 ### 6.5 技术分析综合解读
 
-{result.get('technical', {}).get('analysis', '暂无分析')}
+{tech.get('analysis', '暂无分析')}
 
 ---
 
@@ -196,14 +213,14 @@ def generate_markdown_report(result: Dict) -> str:
 
 | 指标 | 数值 |
 |------|------|
-| 当前价格 | **{result.get('risk_management', {}).get('current_price', 0):.2f}元** |
-| ATR值 | **{result.get('risk_management', {}).get('atr', 0):.2f}** |
-| 标准止损 | **{result.get('risk_management', {}).get('stop_loss_price', 0):.2f}元** |
-| 止损幅度 | **{result.get('risk_management', {}).get('risk_pct', 0):.1f}%** |
+| 当前价格 | **{risk_mgmt.get('current_price', result.get('price', {}).get('current', 0)):.2f}元** |
+| ATR值 | **{risk_mgmt.get('atr', 0):.2f}** |
+| 标准止损 | **{risk_mgmt.get('stop_loss_price', 0):.2f}元** |
+| 止损幅度 | **{risk_mgmt.get('risk_pct', 0):.1f}%** |
 
 ### 7.2 止损策略解读
 
-{result.get('risk_management', {}).get('analysis', '暂无分析')}
+{risk_mgmt.get('analysis', '暂无分析')}
 
 ---
 
@@ -217,8 +234,8 @@ def generate_markdown_report(result: Dict) -> str:
     md += "| Buff类型 | 分值 | 描述 |\n"
     md += "|----------|------|------|\n"
     
-    for buff_type, score, desc, color in buffs:
-        md += f"| **{buff_type}** | **{score}** | {desc} |\n"
+    for buff_type, buff_score, desc, color in buffs:
+        md += f"| **{buff_type}** | **{buff_score}** | {desc} |\n"
     
     total = sum([int(b[1]) for b in buffs])
     total_text = '偏多' if total > 0 else ('偏空' if total < 0 else '中性')
@@ -319,8 +336,13 @@ def _get_volume_eval(ratio: float) -> str:
 def _calculate_buffs(result: Dict) -> list:
     buffs = []
     
+    profitability = result.get('profitability', {})
+    valuation = result.get('valuation', {})
+    financial = result.get('financial', {})
+    tech = result.get('technical', {})
+    
     # 基本面buff
-    roe = result.get('profitability', {}).get('roe', 0)
+    roe = profitability.get('roe', 0)
     if roe > 0.20:
         buffs.append(('基本面', '+3', f'ROE优秀({roe*100:.1f}%)，盈利能力强', '#22c55e'))
     elif roe > 0.15:
@@ -331,7 +353,7 @@ def _calculate_buffs(result: Dict) -> list:
         buffs.append(('基本面', '-1', f'ROE较差({roe*100:.1f}%)', '#ef4444'))
     
     # 估值buff
-    pe = result.get('valuation', {}).get('pe', 0)
+    pe = valuation.get('pe', 0)
     if pe and pe < 15:
         buffs.append(('估值', '+2', f'PE低估({pe:.1f})，安全边际高', '#22c55e'))
     elif pe and pe < 25:
@@ -340,8 +362,8 @@ def _calculate_buffs(result: Dict) -> list:
         buffs.append(('估值', '-2', f'PE高估({pe:.1f})，估值偏高', '#ef4444'))
     
     # 财务健康buff
-    status = result.get('financial', {}).get('status', '')
-    debt_ratio = result.get('financial', {}).get('debt_ratio', 0)
+    status = financial.get('status', '')
+    debt_ratio = financial.get('debt_ratio', 0)
     if status == '健康':
         buffs.append(('财务', '+1', f'财务健康，资产负债率{debt_ratio:.1f}%', '#22c55e'))
     elif status == '需关注':
@@ -350,7 +372,7 @@ def _calculate_buffs(result: Dict) -> list:
         buffs.append(('财务', '-2', f'财务风险高，资产负债率{debt_ratio:.1f}%', '#ef4444'))
     
     # 技术面buff
-    signal = result.get('technical', {}).get('signal_strength', 0)
+    signal = tech.get('signal_strength', 0)
     if signal > 3:
         buffs.append(('技术面', '+2', f'技术面强势，信号强度{signal}', '#22c55e'))
     elif signal > 0:
@@ -364,15 +386,16 @@ def _calculate_buffs(result: Dict) -> list:
 
 def _generate_action_advice_md(result: Dict) -> str:
     tech = result.get('technical', {})
+    patterns = tech.get('patterns', {})
     volume = result.get('volume_validation', {})
     price = result.get('price', {})
     
     current = price.get('current', 0)
-    support_near = tech.get('support_near', 0)
-    resistance_near = tech.get('resistance_near', 0)
+    support_near = patterns.get('support_near', 0)
+    resistance_near = patterns.get('resistance_near', 0)
     rsi = tech.get('indicators', {}).get('rsi', 50)
     volume_ratio = volume.get('volume_ratio', 1)
-    trend = str(tech.get('patterns', {}).get('trend_desc', '')).split('(')[0].strip()
+    trend = str(patterns.get('trend_desc', '')).split('(')[0].strip()
     
     advice = []
     
@@ -393,11 +416,11 @@ def _generate_action_advice_md(result: Dict) -> str:
         advice.append(f"✅ RSI={rsi:.1f}超卖，可能存在反弹机会，可关注")
     
     # 支撑阻力建议
-    if current and support_near:
+    if current and support_near and support_near > 0:
         support_pct = (current - support_near) / current * 100
         advice.append(f"📍 近期支撑位{support_near:.2f}元(距离{support_pct:.1f}%)，跌破支撑需警惕")
     
-    if current and resistance_near:
+    if current and resistance_near and resistance_near > 0:
         resistance_pct = (resistance_near - current) / current * 100
         advice.append(f"📍 近期阻力位{resistance_near:.2f}元(距离{resistance_pct:.1f}%)，突破阻力可加仓")
     
@@ -411,4 +434,4 @@ def _generate_action_advice_md(result: Dict) -> str:
 
 
 if __name__ == '__main__':
-    print("Markdown报告生成器 v1.0")
+    print("Markdown报告生成器 v2.0")
