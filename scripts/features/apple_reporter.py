@@ -368,23 +368,23 @@ class AppleStyleReporter:
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div class="mini-card rounded-lg p-4">
                         <div class="text-gray-400 text-xs mb-1">近期支撑</div>
-                        <div class="text-2xl font-bold text-green-400">{tech.get('support_near', 0):.2f}</div>
-                        <div class="text-xs mt-1 text-gray-500">{tech.get('support_near_pct', 0):.1f}% 距离</div>
+                        <div class="text-2xl font-bold text-green-400">{tech.get('patterns', {}).get('support_near', 0):.2f}</div>
+                        <div class="text-xs mt-1 text-gray-500">{tech.get('patterns', {}).get('support_near_pct', 0):.1f}% 距离</div>
                     </div>
                     <div class="mini-card rounded-lg p-4">
                         <div class="text-gray-400 text-xs mb-1">远期支撑</div>
-                        <div class="text-2xl font-bold text-green-600">{tech.get('support_far', 0):.2f}</div>
-                        <div class="text-xs mt-1 text-gray-500">{tech.get('support_far_pct', 0):.1f}% 距离</div>
+                        <div class="text-2xl font-bold text-green-600">{tech.get('patterns', {}).get('support_far', 0):.2f}</div>
+                        <div class="text-xs mt-1 text-gray-500">{tech.get('patterns', {}).get('support_far_pct', 0):.1f}% 距离</div>
                     </div>
                     <div class="mini-card rounded-lg p-4">
                         <div class="text-gray-400 text-xs mb-1">近期阻力</div>
-                        <div class="text-2xl font-bold text-red-400">{tech.get('resistance_near', 0):.2f}</div>
-                        <div class="text-xs mt-1 text-gray-500">{tech.get('resistance_near_pct', 0):.1f}% 距离</div>
+                        <div class="text-2xl font-bold text-red-400">{tech.get('patterns', {}).get('resistance_near', 0):.2f}</div>
+                        <div class="text-xs mt-1 text-gray-500">{tech.get('patterns', {}).get('resistance_near_pct', 0):.1f}% 距离</div>
                     </div>
                     <div class="mini-card rounded-lg p-4">
                         <div class="text-gray-400 text-xs mb-1">远期阻力</div>
-                        <div class="text-2xl font-bold text-red-600">{tech.get('resistance_far', 0):.2f}</div>
-                        <div class="text-xs mt-1 text-gray-500">{tech.get('resistance_far_pct', 0):.1f}% 距离</div>
+                        <div class="text-2xl font-bold text-red-600">{tech.get('patterns', {}).get('resistance_far', 0):.2f}</div>
+                        <div class="text-xs mt-1 text-gray-500">{tech.get('patterns', {}).get('resistance_far_pct', 0):.1f}% 距离</div>
                     </div>
                 </div>
                 <div class="analysis-box">
