@@ -139,9 +139,9 @@ def generate_apple_report(result: Dict) -> str:
             </div>
             
             <div class="flex justify-center gap-6 text-sm text-gray-400">
-                <div><span class="text-white font-semibold">{current_price:.2f if current_price > 0 else "N/A"}</span> 元</div>
+                <div><span class="text-white font-semibold">{f"{current_price:.2f}" if current_price > 0 else "N/A"}</span> 元</div>
                 <div class="w-px h-4 bg-gray-700"></div>
-                <div><span class="text-white font-semibold">{change_pct:+.2f if change_pct != 0 else "0.00"}%</span></div>
+                <div><span class="text-white font-semibold">{f"{change_pct:+.2f}" if change_pct != 0 else "0.00"}%</span></div>
                 <div class="w-px h-4 bg-gray-700"></div>
                 <div><span class="text-white font-semibold">{valuation.get('market_cap_str', 'N/A')}</span></div>
                 <div class="w-px h-4 bg-gray-700"></div>
