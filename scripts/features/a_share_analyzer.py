@@ -441,32 +441,47 @@ class AShareAnalyzer:
     
     def _analyze_financial(self, info, profitability) -> Dict:
         # 正确获取资产负债率 (Debt to Assets Ratio)
-        # yfinance没有直接的debtToAssets，需要从balance sheet计算
-        # debtToEquity是债务权益比，不是资产负债率
+        # 优先从balance sheet直接计算
         
-        debt_to_equity = info.get('debtToEquity')
-        current_ratio = info.get('currentRatio')
+        debt_ratio = None
+        debt_ratio_source = 'unavailable'
+        confidence = 0.3
         
-        # 尝试从财务报表计算资产负债率
+        # 方法1: 直接从balance sheet获取 (最准确)
         try:
             total_assets = info.get('totalAssets')
             total_liab = info.get('totalLiab')
             
             if total_assets and total_liab and total_assets > 0:
-                debt_ratio = (total_liab / total_assets) * 100  # 资产负债率
-                debt_ratio_source = 'calculated'
-            elif debt_to_equity:
-                # fallback: 从debtToEquity推算
-                # D/E = D/E → D/A = D/(D+E) = (D/E) / (1 + D/E)
-                de_ratio = debt_to_equity / 100
-                debt_ratio = (de_ratio / (1 + de_ratio)) * 100
-                debt_ratio_source = 'estimated_from_de'
-            else:
-                debt_ratio = None
-                debt_ratio_source = 'unavailable'
-        except:
-            debt_ratio = None
-            debt_ratio_source = 'error'
+                debt_ratio = (total_liab / total_assets) * 100
+                debt_ratio_source = '财报计算'
+                confidence = 0.95
+        except Exception as e:
+            pass
+        
+        # 方法2: 从债务权益比推算 (fallback)
+        if debt_ratio is None:
+            try:
+                debt_to_equity = info.get('debtToEquity')
+                if debt_to_equity:
+                    # D/E = D/E → D/A = D/(D+E) = (D/E) / (1 + D/E)
+                    de_ratio = debt_to_equity / 100
+                    debt_ratio = (de_ratio / (1 + de_ratio)) * 100
+                    debt_ratio_source = '债务权益比推算'
+                    confidence = 0.70
+            except:
+                pass
+        
+        # 方法3: 尝试从ticker.balance_sheet获取 (最可靠)
+        if debt_ratio is None or confidence < 0.95:
+            try:
+                # 这个需要ticker对象，暂时跳过
+                # balance_sheet = ticker.balance_sheet
+                pass
+            except:
+                pass
+        
+        current_ratio = info.get('currentRatio')
         
         risks = []
         if debt_ratio and debt_ratio > 70:
@@ -481,21 +496,12 @@ class AShareAnalyzer:
         status = '高风险' if len(risks) >= 2 else ('需关注' if risks else '健康')
         analysis = f"财务状态{status}。" + ('存在风险：' + '、'.join(risks) if risks else '各项指标正常。')
         
-        # 数据来源说明
-        source_desc = {
-            'calculated': '从财报计算',
-            'estimated_from_de': '从债务权益比推算',
-            'unavailable': '数据不可用',
-            'error': '获取失败'
-        }
-        
         return {
             'debt_ratio': debt_ratio,
-            'debt_to_equity': debt_to_equity,
             'current_ratio': current_ratio,
             'risks': risks, 'status': status, 'analysis': analysis,
-            'data_source': source_desc.get(debt_ratio_source, '未知'),
-            'confidence': 0.95 if debt_ratio_source == 'calculated' else (0.7 if debt_ratio_source == 'estimated_from_de' else 0.3)
+            'data_source': debt_ratio_source,
+            'confidence': confidence
         }
     
     def _analyze_technical(self, hist) -> Dict:
@@ -1935,6 +1941,9 @@ class AShareAnalyzer:
         <div class="card p-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50">
             <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>💡</span> 汇总分析</h2>
             
+            <!-- Buff叠加表格 -->
+            {self._buff_table_html(result)}
+            
             <div class="space-y-4 mb-4">
                 <div class="p-4 bg-white rounded-lg">
                     <div class="font-bold text-gray-700 mb-2">🏭 行业周期分析</div>
@@ -2812,6 +2821,80 @@ class AShareAnalyzer:
         </div>'''
         except Exception as e:
             return f'<div class="card p-6 mb-6"><p class="text-gray-500">⚠️ 风险分析失败: {e}</p></div>'
+    
+    def _buff_table_html(self, result: Dict) -> str:
+        """生成Buff叠加表格"""
+        buffs = []
+        
+        # 技术面buff
+        tech_score = result.get('technical', {}).get('signal_strength', 0)
+        if tech_score > 0:
+            buffs.append({'type': '技术面', 'score': f'+{tech_score}', 'desc': '多头信号占优', 'color': '#27ae60'})
+        elif tech_score < 0:
+            buffs.append({'type': '技术面', 'score': f'{tech_score}', 'desc': '空头信号占优', 'color': '#e74c3c'})
+        
+        # 基本面buff
+        roe = result.get('profitability', {}).get('roe', 0)
+        if roe and roe > 0.15:
+            buffs.append({'type': '基本面', 'score': '+3', 'desc': f'ROE强劲({roe*100:.1f}%)', 'color': '#27ae60'})
+        elif roe and roe > 0.10:
+            buffs.append({'type': '基本面', 'score': '+2', 'desc': f'ROE良好({roe*100:.1f}%)', 'color': '#27ae60'})
+        
+        # 估值buff
+        pe = result.get('valuation', {}).get('pe', 0)
+        if pe and pe < 15:
+            buffs.append({'type': '估值', 'score': '+2', 'desc': f'PE低估({pe:.1f})', 'color': '#27ae60'})
+        elif pe and pe < 25:
+            buffs.append({'type': '估值', 'score': '+1', 'desc': f'PE合理({pe:.1f})', 'color': '#f39c12'})
+        elif pe and pe > 40:
+            buffs.append({'type': '估值', 'score': '-2', 'desc': f'PE高估({pe:.1f})', 'color': '#e74c3c'})
+        
+        # 财务健康buff
+        status = result.get('financial', {}).get('status', '')
+        if status == '健康':
+            buffs.append({'type': '财务健康', 'score': '+1', 'desc': '财务状态良好', 'color': '#27ae60'})
+        elif status == '需关注':
+            buffs.append({'type': '财务健康', 'score': '-1', 'desc': '财务需关注', 'color': '#f39c12'})
+        elif status == '高风险':
+            buffs.append({'type': '财务健康', 'score': '-2', 'desc': '财务风险高', 'color': '#e74c3c'})
+        
+        # 计算总buff
+        total_score = sum([int(b['score']) for b in buffs])
+        
+        # 生成HTML
+        buff_rows = ''
+        for buff in buffs:
+            buff_rows += f'''
+                <tr class="border-b">
+                    <td class="py-2 px-4 font-medium">{buff['type']}</td>
+                    <td class="py-2 px-4" style="color: {buff['color']}">{buff['score']}</td>
+                    <td class="py-2 px-4 text-gray-600">{buff['desc']}</td>
+                </tr>'''
+        
+        total_color = '#27ae60' if total_score > 0 else ('#e74c3c' if total_score < 0 else '#f39c12')
+        total_text = '偏多' if total_score > 0 else ('偏空' if total_score < 0 else '中性')
+        
+        return f'''
+            <div class="mb-4 p-4 bg-white rounded-lg">
+                <h3 class="font-bold text-gray-700 mb-3">🎯 Buff叠加分析</h3>
+                <table class="w-full text-sm">
+                    <thead class="border-b-2">
+                        <tr>
+                            <th class="py-2 px-4 text-left">Buff类型</th>
+                            <th class="py-2 px-4 text-left">分值</th>
+                            <th class="py-2 px-4 text-left">贡献</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {buff_rows}
+                        <tr class="font-bold bg-gray-50">
+                            <td class="py-2 px-4">总Buff</td>
+                            <td class="py-2 px-4" style="color: {total_color}">{total_score:+d}</td>
+                            <td class="py-2 px-4">{total_text} (评分{result['score']}/100)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>'''
     
     def _valuation_pro_html(self, result: Dict) -> str:
         """专业估值模型HTML"""
