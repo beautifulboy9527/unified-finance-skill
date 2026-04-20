@@ -223,6 +223,29 @@ class AShareAnalyzer:
         info = ticker.info
         hist = ticker.history(period='6mo')
         
+        # 检查数据完整性，如果缺失则尝试备用数据源
+        if hist.empty or (len(hist) > 0 and pd.isna(hist['Close'].iloc[-1])):
+            print("⚠️ 主数据源数据缺失，尝试备用数据源...")
+            
+            if MULTI_SOURCE_AVAILABLE:
+                try:
+                    manager = MultiSourceManager()
+                    backup_data = manager.fetch_stock_data(symbol)
+                    
+                    if backup_data['success']:
+                        print(f"✅ 已从 {backup_data['source']} 获取数据")
+                        if backup_data.get('hist') is not None:
+                            hist = backup_data['hist']
+                        if backup_data.get('info'):
+                            # 合并info，不覆盖已有数据
+                            for key, value in backup_data['info'].items():
+                                if key not in info or not info.get(key):
+                                    info[key] = value
+                    else:
+                        print(f"⚠️ 备用数据源也失败: {backup_data.get('errors', [])}")
+                except Exception as e:
+                    print(f"⚠️ 备用数据源异常: {str(e)[:50]}")
+        
         result = {
             'success': True, 'symbol': symbol, 'yf_symbol': yf_symbol,
             'market': self._get_market_name(symbol),
