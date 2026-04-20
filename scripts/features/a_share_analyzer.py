@@ -137,6 +137,8 @@ class AShareAnalyzer:
         'Oil & Gas': '石油天然气', 'Metals & Mining': '金属采矿',
         'Furnishings, Fixtures & Appliances': '家电',
         'Household Durables': '耐用消费品',
+        'Farm & Heavy Construction Machinery': '工程机械',
+        'Construction Machinery': '工程机械',
         'Leisure Products': '休闲用品',
         'Auto Components': '汽车零部件',
     }
@@ -158,6 +160,7 @@ class AShareAnalyzer:
         'LONGi Green Energy Technology Co., Ltd.': '隆基绿能',
         'Kweichow Moutai Co., Ltd.': '贵州茅台',
         'Contemporary Amperex Technology Co. Limited': '宁德时代',
+        'SANY Heavy Industry Co., Ltd.': '三一重工',
     }
     
     STOCK_INDUSTRY_OVERRIDE = {
@@ -172,6 +175,8 @@ class AShareAnalyzer:
                      'desc': '白电行业格局稳定，龙头企业现金流好，分红稳定'},
         'GREE': {'industry': '家用电器', 'sector': '消费', 'cycle': '成熟期', 'risk': '低',
                  'desc': '白电行业格局稳定，龙头企业现金流好，分红稳定'},
+        'SANY': {'industry': '工程机械', 'sector': '工业', 'cycle': '周期波动', 'risk': '中',
+                 'desc': '工程机械行业受基建投资影响，周期性明显，龙头企业市场份额高'},
     }
     
     # 行业周期和风险知识库
@@ -309,6 +314,7 @@ class AShareAnalyzer:
             '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪',
             '000651': '格力电器', '000333': '美的集团', '002475': '立讯精密',
             '601398': '工商银行', '601288': '农业银行', '600030': '中信证券',
+            '600031': '三一重工',
         }
         return names.get(symbol, symbol)
     
