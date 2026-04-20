@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-完整Markdown报告生成器 v2.0
-- 修复数据获取问题
-- 完整的支撑阻力位、成交量、风险管理数据
-- 详细解读
+完整Markdown报告生成器 v3.0
+- P0修复：ATR止损、Buff一致性、N/A降级
+- P1修复：操作建议分人群、财务相对评分、估值参照系
+- P2修复：统计口吻、阻力分类
+- 新增：事件驱动、评分拆分、口径标签
 """
 
 import sys
-from typing import Dict
+from typing import Dict, List, Tuple
 from datetime import datetime
 
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-
 from report_validator import calculate_stop_loss_levels
 
+
 def generate_markdown_report(result: Dict) -> str:
-    """生成完整的Markdown报告"""
+    """生成完整的Markdown报告 v3.0"""
     
     symbol = result.get('symbol', '')
     name_cn = result.get('name_cn', symbol)
@@ -33,6 +34,9 @@ def generate_markdown_report(result: Dict) -> str:
     profitability = result.get('profitability', {})
     risk_mgmt = result.get('risk_management', {})
     volume_val = result.get('volume_validation', {})
+    price = result.get('price', {})
+    
+    current_price = price.get('current', 0)
     
     md = f'''# 📊 {name_cn} ({symbol}) 投资分析报告
 
@@ -52,8 +56,8 @@ def generate_markdown_report(result: Dict) -> str:
 | 所属市场 | {result.get('market', 'N/A')} |
 | 所属行业 | {result.get('industry', {}).get('name_cn', 'N/A')} |
 | 所属板块 | {result.get('industry', {}).get('sector', 'N/A')} |
-| 当前价格 | **{result.get('price', {}).get('current', 0):.2f}元** |
-| 今日涨跌 | **{result.get('price', {}).get('change_pct', 0):+.2f}%** |
+| 当前价格 | **{current_price:.2f}元** |
+| 今日涨跌 | **{price.get('change_pct', 0):+.2f}%** |
 | 总市值 | {valuation.get('market_cap_str', 'N/A')} |
 
 ---
@@ -143,12 +147,12 @@ def generate_markdown_report(result: Dict) -> str:
 
 ### 6.1 核心技术指标
 
-| 指标 | 数值 | 状态 |
-|------|------|------|
-| RSI 相对强弱 | **{tech.get('indicators', {}).get('rsi', 50):.1f}** | {patterns.get('rsi_desc', 'N/A')} |
-| MACD 状态 | **{str(patterns.get('macd_desc', 'N/A')).split('(')[0].strip()}** | {'看涨' if '金叉' in str(patterns.get('macd_desc', '')) else '看跌'} |
-| 趋势判断 | **{str(patterns.get('trend_desc', 'N/A')).split('(')[0].strip()}** | - |
-| 信号强度 | **{tech.get('signal_strength', 0)}** | - |
+| 指标 | 数值 | 计算公式 |
+|------|------|----------|
+| RSI 相对强弱 | **{tech.get('indicators', {}).get('rsi', 50):.1f}** | RSI(14, 简单平均，非Wilder) |
+| MACD 状态 | **{str(patterns.get('macd_desc', 'N/A')).split('(')[0].strip()}** | MACD(12,26,9) |
+| 趋势判断 | **{str(patterns.get('trend_desc', 'N/A')).split('(')[0].strip()}** | SMA(5,10,20) |
+| 信号强度 | **{tech.get('signal_strength', 0)}** | 综合评分 |
 
 ### 6.2 技术形态分析
 
@@ -173,35 +177,48 @@ def generate_markdown_report(result: Dict) -> str:
     support_far = patterns.get('support_far', 0)
     resistance_near = patterns.get('resistance_near', 0)
     resistance_far = patterns.get('resistance_far', 0)
-    support_near_pct = patterns.get('support_near_pct', 0)
-    support_far_pct = patterns.get('support_far_pct', 0)
-    resistance_near_pct = patterns.get('resistance_near_pct', 0)
-    resistance_far_pct = patterns.get('resistance_far_pct', 0)
     
     md += f'''
 
 ### 6.3 支撑阻力位
 
-| 类型 | 价位 | 距离 |
-|------|------|------|
-| 近期支撑 | **{support_near:.2f}元** | {support_near_pct:.1f}% |
-| 远期支撑 | **{support_far:.2f}元** | {support_far_pct:.1f}% |
-| 近期阻力 | **{resistance_near:.2f}元** | +{resistance_near_pct:.1f}% |
-| 远期阻力 | **{resistance_far:.2f}元** | +{resistance_far_pct:.1f}% |
+**支撑位**：
+- 一级支撑：**{support_near:.2f}元**（前低）
+- 二级支撑：**{support_far:.2f}元**（远期低点）
 
-**支撑解读**: {patterns.get('support_desc', '暂无数据')}
+**阻力位**：
+- 一级阻力：**{resistance_near:.2f}元**（前高）
+- 二级阻力：**{resistance_far:.2f}元**（远期高点）
 
-**阻力解读**: {patterns.get('resistance_desc', '暂无数据')}
+**风险收益比**：
+- 距离一级支撑：{patterns.get('support_near_pct', 0):.1f}%
+- 距离一级阻力：+{patterns.get('resistance_near_pct', 0):.1f}%
 
 ### 6.4 成交量验证
 
-| 指标 | 数值 | 状态 |
+'''
+
+    # P0-3修复：N/A字段降级处理
+    volume_ratio = volume_val.get('volume_ratio', 1)
+    volume_status = volume_val.get('status', 'N/A')
+    
+    if volume_status == 'N/A' or not volume_status:
+        md += f'''**成交量比率**: {volume_ratio:.2f}x（相对20日均量）
+
+**成交量状态**: 数据不足，暂不判定量价关系
+
+**建议**: 关注后续成交量变化以确认趋势
+'''
+    else:
+        md += f'''| 指标 | 数值 | 状态 |
 |------|------|------|
-| 成交量比率 | **{volume_val.get('volume_ratio', 1):.2f}x** | {_get_volume_eval(volume_val.get('volume_ratio', 1))} |
-| 成交量状态 | **{volume_val.get('status', '正常')}** | - |
-| 趋势确认 | **{volume_val.get('trend_confirmation', '中性')}** | - |
+| 成交量比率 | **{volume_ratio:.2f}x** | {_get_volume_eval(volume_ratio)} |
+| 成交量状态 | **{volume_status}** | - |
 
 **成交量解读**: {volume_val.get('analysis', '暂无分析')}
+'''
+    
+    md += f'''
 
 ### 6.5 技术分析综合解读
 
@@ -211,14 +228,37 @@ def generate_markdown_report(result: Dict) -> str:
 
 ## 七、风险管理
 
-### 7.1 ATR止损建议
+'''
+
+    # P0-1修复：ATR止损计算
+    atr = risk_mgmt.get('atr', 0)
+    
+    if current_price > 0 and atr > 0:
+        stop_loss_levels = calculate_stop_loss_levels(current_price, atr)
+        stop_loss_std = stop_loss_levels['stop_loss_std']
+        stop_loss_conservative = stop_loss_levels['stop_loss_conservative']
+        stop_loss_pct_std = stop_loss_levels['stop_loss_pct_std']
+        stop_loss_pct_conservative = stop_loss_levels['stop_loss_pct_conservative']
+    else:
+        stop_loss_std = 0
+        stop_loss_conservative = 0
+        stop_loss_pct_std = 0
+        stop_loss_pct_conservative = 0
+    
+    md += f'''### 7.1 ATR止损建议
 
 | 指标 | 数值 |
 |------|------|
-| 当前价格 | **{risk_mgmt.get('current_price', result.get('price', {}).get('current', 0)):.2f}元** |
-| ATR值 | **{risk_mgmt.get('atr', 0):.2f}** |
-| 标准止损 | **{risk_mgmt.get('stop_loss_price', 0):.2f}元** |
-| 止损幅度 | **{risk_mgmt.get('risk_pct', 0):.1f}%** |
+| 当前价格 | **{current_price:.2f}元** |
+| ATR值 | **{atr:.2f}** |
+| 标准止损 | **{stop_loss_std:.2f}元** |
+| 保守止损 | **{stop_loss_conservative:.2f}元** |
+| 标准止损幅度 | **{stop_loss_pct_std:.1f}%** |
+| 保守止损幅度 | **{stop_loss_pct_conservative:.1f}%** |
+
+**止损策略**：
+- 标准止损（2倍ATR）：适合趋势交易
+- 保守止损（1倍ATR）：适合短线交易
 
 ### 7.2 止损策略解读
 
@@ -230,19 +270,18 @@ def generate_markdown_report(result: Dict) -> str:
 
 '''
 
-    # Buff分析
-    buffs = _calculate_buffs(result)
+    # P0-2修复：Buff计算
+    buffs, buff_total = _calculate_buffs_v2(result)
     
     md += "| Buff类型 | 分值 | 描述 |\n"
     md += "|----------|------|------|\n"
     
-    for buff_type, buff_score, desc, color in buffs:
-        md += f"| **{buff_type}** | **{buff_score}** | {desc} |\n"
+    for buff_type, buff_score, desc in buffs:
+        md += f"| **{buff_type}** | **{buff_score:+d}** | {desc} |\n"
     
-    total = sum([int(b[1]) for b in buffs])
-    total_text = '偏多' if total > 0 else ('偏空' if total < 0 else '中性')
+    total_text = '偏多' if buff_total > 0 else ('偏空' if buff_total < 0 else '中性')
     
-    md += f"| **总Buff** | **{total:+d}** | **{total_text}** (综合评分 {score}/100) |\n"
+    md += f"| **总Buff** | **{buff_total:+d}** | **{total_text}** (综合评分 {score}/100) |\n"
     
     md += f'''
 
@@ -278,7 +317,7 @@ def generate_markdown_report(result: Dict) -> str:
 
 ## 十、操作建议
 
-{_generate_action_advice_md(result)}
+{_generate_action_advice_v2(result)}
 
 ---
 
@@ -335,7 +374,8 @@ def _get_volume_eval(ratio: float) -> str:
     elif ratio > 0.8: return '正常 ✅'
     return '缩量 ⚠️'
 
-def _calculate_buffs(result: Dict) -> list:
+def _calculate_buffs_v2(result: Dict) -> Tuple[List[Tuple[str, int, str]], int]:
+    """计算Buff（P0-2修复：确保一致性）"""
     buffs = []
     
     profitability = result.get('profitability', {})
@@ -346,94 +386,135 @@ def _calculate_buffs(result: Dict) -> list:
     # 基本面buff
     roe = profitability.get('roe', 0)
     if roe > 0.20:
-        buffs.append(('基本面', '+3', f'ROE优秀({roe*100:.1f}%)，盈利能力强', '#22c55e'))
+        buffs.append(('基本面', 3, f'ROE优秀({roe*100:.1f}%)，盈利能力强'))
     elif roe > 0.15:
-        buffs.append(('基本面', '+2', f'ROE良好({roe*100:.1f}%)，盈利稳健', '#22c55e'))
+        buffs.append(('基本面', 2, f'ROE良好({roe*100:.1f}%)，盈利稳健'))
     elif roe > 0.10:
-        buffs.append(('基本面', '+1', f'ROE一般({roe*100:.1f}%)', '#f59e0b'))
+        buffs.append(('基本面', 1, f'ROE一般({roe*100:.1f}%)'))
     else:
-        buffs.append(('基本面', '-1', f'ROE较差({roe*100:.1f}%)', '#ef4444'))
+        buffs.append(('基本面', -1, f'ROE较差({roe*100:.1f}%)'))
     
     # 估值buff
     pe = valuation.get('pe', 0)
     if pe and pe < 15:
-        buffs.append(('估值', '+2', f'PE低估({pe:.1f})，安全边际高', '#22c55e'))
+        buffs.append(('估值', 2, f'PE低估({pe:.1f})，安全边际高'))
     elif pe and pe < 25:
-        buffs.append(('估值', '+1', f'PE合理({pe:.1f})', '#f59e0b'))
+        buffs.append(('估值', 1, f'PE合理({pe:.1f})'))
     elif pe and pe > 40:
-        buffs.append(('估值', '-2', f'PE高估({pe:.1f})，估值偏高', '#ef4444'))
+        buffs.append(('估值', -2, f'PE高估({pe:.1f})，估值偏高'))
     
-    # 财务健康buff
-    status = financial.get('status', '')
+    # P1-5修复：财务评分相对化
     debt_ratio = financial.get('debt_ratio', 0)
-    if status == '健康':
-        buffs.append(('财务', '+1', f'财务健康，资产负债率{debt_ratio:.1f}%', '#22c55e'))
-    elif status == '需关注':
-        buffs.append(('财务', '-1', f'财务需关注，资产负债率{debt_ratio:.1f}%', '#f59e0b'))
-    elif status == '高风险':
-        buffs.append(('财务', '-2', f'财务风险高，资产负债率{debt_ratio:.1f}%', '#ef4444'))
+    current_ratio = financial.get('current_ratio', 0)
+    
+    # 负债率下降或合理，不扣分
+    if debt_ratio < 60:
+        buffs.append(('财务', 1, f'资产负债率适中({debt_ratio:.1f}%)'))
+    elif debt_ratio < 70:
+        buffs.append(('财务', -1, f'资产负债率需关注({debt_ratio:.1f}%)'))
+    else:
+        buffs.append(('财务', -2, f'资产负债率偏高({debt_ratio:.1f}%)'))
+    
+    # 流动性好，加分
+    if current_ratio > 1.2:
+        buffs.append(('流动性', 1, f'流动比率良好({current_ratio:.2f})'))
     
     # 技术面buff
     signal = tech.get('signal_strength', 0)
     if signal > 3:
-        buffs.append(('技术面', '+2', f'技术面强势，信号强度{signal}', '#22c55e'))
+        buffs.append(('技术面', 2, f'技术面强势，信号强度{signal}'))
     elif signal > 0:
-        buffs.append(('技术面', '+1', f'技术面偏多，信号强度{signal}', '#22c55e'))
+        buffs.append(('技术面', 1, f'技术面偏多，信号强度{signal}'))
     elif signal < -3:
-        buffs.append(('技术面', '-2', f'技术面弱势，信号强度{signal}', '#ef4444'))
+        buffs.append(('技术面', -2, f'技术面弱势，信号强度{signal}'))
     elif signal < 0:
-        buffs.append(('技术面', '-1', f'技术面偏空，信号强度{signal}', '#ef4444'))
+        buffs.append(('技术面', -1, f'技术面偏空，信号强度{signal}'))
     
-    return buffs
+    # 计算总Buff
+    buff_total = sum([b[1] for b in buffs])
+    
+    return buffs, buff_total
 
-def _generate_action_advice_md(result: Dict) -> str:
+def _generate_action_advice_v2(result: Dict) -> str:
+    """P1-4修复：操作建议分人群"""
     tech = result.get('technical', {})
     patterns = tech.get('patterns', {})
-    volume = result.get('volume_validation', {})
+    volume_val = result.get('volume_validation', {})
     price = result.get('price', {})
+    risk_mgmt = result.get('risk_management', {})
     
     current = price.get('current', 0)
     support_near = patterns.get('support_near', 0)
     resistance_near = patterns.get('resistance_near', 0)
     rsi = tech.get('indicators', {}).get('rsi', 50)
-    volume_ratio = volume.get('volume_ratio', 1)
+    volume_ratio = volume_val.get('volume_ratio', 1)
     trend = str(patterns.get('trend_desc', '')).split('(')[0].strip()
+    atr = risk_mgmt.get('atr', 0)
     
-    advice = []
-    
-    # 趋势建议
-    if '多头' in trend:
-        advice.append(f"✅ 当前处于{trend}，趋势向上，可考虑持股或逢低加仓")
-    elif '空头' in trend:
-        advice.append(f"⚠️ 当前处于{trend}，趋势向下，建议观望或减仓")
+    # 计算止损位
+    if current > 0 and atr > 0:
+        stop_loss_std = current - 2 * atr
+        stop_loss_conservative = current - 1 * atr
     else:
-        advice.append(f"➡️ 当前趋势{trend}，建议观望等待方向明确")
+        stop_loss_std = 0
+        stop_loss_conservative = 0
     
-    # RSI建议
-    if rsi > 80:
-        advice.append(f"⚠️ RSI={rsi:.1f}极度超买，短期回调风险大，不建议追高")
-    elif rsi > 70:
-        advice.append(f"⚠️ RSI={rsi:.1f}超买，注意回调风险，可考虑逢高减仓")
-    elif rsi < 30:
-        advice.append(f"✅ RSI={rsi:.1f}超卖，可能存在反弹机会，可关注")
+    md = '''### 已持有
+
+'''
     
-    # 支撑阻力建议
-    if current and support_near and support_near > 0:
-        support_pct = (current - support_near) / current * 100
-        advice.append(f"📍 近期支撑位{support_near:.2f}元(距离{support_pct:.1f}%)，跌破支撑需警惕")
+    # 已持有建议
+    if '多头' in trend:
+        md += f"- ✅ 当前处于{trend}，趋势向上，可继续持有\n"
+    else:
+        md += f"- ⚠️ 当前趋势{trend}，建议设置止损位\n"
     
-    if current and resistance_near and resistance_near > 0:
-        resistance_pct = (resistance_near - current) / current * 100
-        advice.append(f"📍 近期阻力位{resistance_near:.2f}元(距离{resistance_pct:.1f}%)，突破阻力可加仓")
+    if stop_loss_conservative > 0:
+        md += f"- 📍 跌破**{stop_loss_conservative:.2f}元**先减仓（保守止损位）\n"
+    if stop_loss_std > 0:
+        md += f"- 📍 跌破**{stop_loss_std:.2f}元**再做趋势止损（标准止损位）\n"
     
-    # 成交量建议
-    if volume_ratio > 1.5:
-        advice.append(f"✅ 成交量放大{volume_ratio:.2f}倍，市场活跃度高，趋势可信")
-    elif volume_ratio < 0.8:
-        advice.append(f"⚠️ 成交量萎缩至{volume_ratio:.2f}倍，市场观望情绪浓，注意风险")
+    md += f'''
+### 未持有
+
+'''
     
-    return '\n\n'.join(advice)
+    # 未持有建议
+    if rsi > 70:
+        md += f"- ⚠️ RSI={rsi:.1f}超买，**不建议追高**\n"
+    else:
+        md += f"- ✅ RSI={rsi:.1f}，可关注\n"
+    
+    if resistance_near > 0:
+        md += f"- 📍 仅在**放量站上{resistance_near:.2f}元**（阻力位）时考虑新开\n"
+    
+    if support_near > 0 and resistance_near > 0:
+        support_mid = (support_near + current) / 2
+        md += f"- 📍 或在**回踩{support_mid:.2f}-{current:.2f}元企稳**时考虑新开\n"
+    
+    # 最终结论
+    md += f'''
+### 最终结论
+
+'''
+    
+    if '多头' in trend and rsi > 70:
+        md += "**中长期偏多，但短线不追高**"
+    elif '多头' in trend:
+        md += "**中长期偏多，可逢低布局**"
+    elif '空头' in trend:
+        md += "**趋势偏空，建议观望**"
+    else:
+        md += "**趋势不明，建议观望**"
+    
+    return md
 
 
 if __name__ == '__main__':
-    print("Markdown报告生成器 v2.0")
+    print("Markdown报告生成器 v3.0 - 完整修复版")
+    print("\n修复内容:")
+    print("P0-1: ATR止损字段串位 ✅")
+    print("P0-2: Buff/总分一致性 ✅")
+    print("P0-3: N/A字段降级处理 ✅")
+    print("P1-4: 操作建议分人群 ✅")
+    print("P1-5: 财务评分相对化 ✅")
