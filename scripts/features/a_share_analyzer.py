@@ -1513,10 +1513,19 @@ class AShareAnalyzer:
         # 当前价格在 indicators['price'] 中
         indicators = technical.get('indicators', {})
         current_price = indicators.get('price', 0)
-        support_near = patterns.get('support_near', 0)
-        resistance_near = patterns.get('resistance_near', 0)
-        support_pct = patterns.get('support_near_pct', 0)
-        resistance_pct = patterns.get('resistance_near_pct', 0)
+        
+        # patterns可能是字典或列表
+        if isinstance(patterns, dict):
+            support_near = patterns.get('support_near', 0)
+            resistance_near = patterns.get('resistance_near', 0)
+            support_pct = patterns.get('support_near_pct', 0)
+            resistance_pct = patterns.get('resistance_near_pct', 0)
+        else:
+            support_near = 0
+            resistance_near = 0
+            support_pct = 0
+            resistance_pct = 0
+        
         total_strength = technical.get('total_strength', 0)
         
         # 计算风险收益比和利润空间
