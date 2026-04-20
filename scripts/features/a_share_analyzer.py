@@ -29,6 +29,13 @@ try:
 except ImportError:
     MULTI_SOURCE_AVAILABLE = False
 
+# 导入行业翻译器
+try:
+    from industry_translator import translate_industry, translate_sector
+    TRANSLATOR_AVAILABLE = True
+except ImportError:
+    TRANSLATOR_AVAILABLE = False
+
 # 导入深度研报模块
 try:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -375,9 +382,17 @@ class AShareAnalyzer:
         # 2. 从行业知识库获取
         industry_info = self.INDUSTRY_KNOWLEDGE.get(industry, self.INDUSTRY_KNOWLEDGE['default'])
         
+        # 3. 使用翻译器自动翻译（如果可用）
+        if TRANSLATOR_AVAILABLE:
+            industry_cn = translate_industry(industry)
+            sector_cn = translate_sector(sector)
+        else:
+            industry_cn = self.INDUSTRY_CN.get(industry, industry)
+            sector_cn = self.SECTOR_CN.get(sector, sector)
+        
         return {
-            'name': industry, 'name_cn': self.INDUSTRY_CN.get(industry, industry),
-            'sector': sector, 'sector_cn': self.SECTOR_CN.get(sector, sector),
+            'name': industry, 'name_cn': industry_cn,
+            'sector': sector, 'sector_cn': sector_cn,
             'cycle': industry_info['cycle'], 'risk': industry_info['risk'],
             'desc': industry_info.get('desc', ''),
             'analysis': f"公司主营{self.INDUSTRY_CN.get(industry, industry)}业务。{industry_info.get('desc', '')}"
