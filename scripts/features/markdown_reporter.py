@@ -179,21 +179,48 @@ def generate_markdown_report(result: Dict) -> str:
     resistance_near = patterns.get('resistance_near', 0)
     resistance_far = patterns.get('resistance_far', 0)
     
+    # 计算支撑阻力强度
+    def get_sr_strength(price, current_price):
+        """根据距离计算强度评级"""
+        if price <= 0 or current_price <= 0:
+            return '★★★☆☆'
+        pct = abs(price - current_price) / current_price * 100
+        if pct < 3:
+            return '★★★★★'
+        elif pct < 5:
+            return '★★★★☆'
+        elif pct < 8:
+            return '★★★☆☆'
+        elif pct < 12:
+            return '★★☆☆☆'
+        else:
+            return '★☆☆☆☆'
+    
+    support_near_strength = get_sr_strength(support_near, current_price)
+    support_far_strength = get_sr_strength(support_far, current_price)
+    resistance_near_strength = get_sr_strength(resistance_near, current_price)
+    resistance_far_strength = get_sr_strength(resistance_far, current_price)
+    
     md += f'''
 
-### 6.3 支撑阻力位
+### 6.3 支撑阻力位分析
 
-**支撑位**：
-- 一级支撑：**{support_near:.2f}元**（前低）
-- 二级支撑：**{support_far:.2f}元**（远期低点）
+#### 主要支撑位
+| 价格 | 类型 | 强度 | 距离 | 意义 |
+|------|------|------|------|------|
+| **{support_far:.2f}元** | 次要支撑 | {support_far_strength} | {patterns.get('support_far_pct', 0):.1f}% | 远期重要支撑 |
+| **{support_near:.2f}元** | 弱支撑 | {support_near_strength} | {patterns.get('support_near_pct', 0):.1f}% | 近期技术支撑 |
 
-**阻力位**：
-- 一级阻力：**{resistance_near:.2f}元**（前高）
-- 二级阻力：**{resistance_far:.2f}元**（远期高点）
+#### 主要阻力位
+| 价格 | 类型 | 强度 | 距离 | 意义 |
+|------|------|------|------|------|
+| **{resistance_near:.2f}元** | 次要阻力 | {resistance_near_strength} | +{patterns.get('resistance_near_pct', 0):.1f}% | 近期技术阻力 |
+| **{resistance_far:.2f}元** | 主要阻力 | {resistance_far_strength} | +{patterns.get('resistance_far_pct', 0):.1f}% | 远期重要阻力 |
 
-**风险收益比**：
-- 距离一级支撑：{patterns.get('support_near_pct', 0):.1f}%
-- 距离一级阻力：+{patterns.get('resistance_near_pct', 0):.1f}%
+**风险收益比分析**：
+- 下跌风险：距离最近支撑 {patterns.get('support_near_pct', 0):.1f}%
+- 上涨空间：距离最近阻力 +{patterns.get('resistance_near_pct', 0):.1f}%
+- 风险收益比：{abs(patterns.get('resistance_near_pct', 1)) / abs(patterns.get('support_near_pct', 1)):.2f}（>1为有利）
 
 ### 6.4 成交量验证
 
