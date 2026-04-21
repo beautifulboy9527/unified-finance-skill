@@ -177,6 +177,7 @@ class AShareAnalyzer:
         'Contemporary Amperex Technology Co. Limited': '宁德时代',
         'SANY Heavy Industry Co., Ltd.': '三一重工',
         'Shenzhen Inovance Technology Co., Ltd.': '汇川技术',
+        'Unigroup Guoxin Microelectronics Co., Ltd.': '紫光国微',
     }
     
     STOCK_INDUSTRY_OVERRIDE = {
@@ -195,6 +196,8 @@ class AShareAnalyzer:
                  'desc': '工程机械行业受基建投资影响，周期性明显，龙头企业市场份额高'},
         'Inovance': {'industry': '电气设备', 'sector': '工业', 'cycle': '成长期', 'risk': '中',
                      'desc': '工业自动化龙头，受益于智能制造和新能源发展，成长性好'},
+        'Guoxin': {'industry': '半导体', 'sector': '科技', 'cycle': '成长期', 'risk': '高',
+                   'desc': '国内安全芯片龙头，受益于国产替代和信息安全需求'},
     }
     
     # 行业周期和风险知识库
@@ -355,7 +358,7 @@ class AShareAnalyzer:
             '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪',
             '000651': '格力电器', '000333': '美的集团', '002475': '立讯精密',
             '601398': '工商银行', '601288': '农业银行', '600030': '中信证券',
-            '600031': '三一重工', '300124': '汇川技术',
+            '600031': '三一重工', '300124': '汇川技术', '002049': '紫光国微',
         }
         return names.get(symbol, symbol)
     
