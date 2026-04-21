@@ -727,6 +727,12 @@ class AShareAnalyzer:
             support_far = low_60
             resistance_far = high_60
             
+            # 确保二级支撑阻力不同于一级
+            if abs(support_far - support_near) < 0.1:
+                support_far = low_60 * 0.98  # 稍微调低
+            if abs(resistance_far - resistance_near) < 0.1:
+                resistance_far = high_60 * 1.02  # 稍微调高
+            
             # 使用新的盈亏比
             risk_reward_ratio = sr_result['risk_reward']
         else:
@@ -751,7 +757,10 @@ class AShareAnalyzer:
             valid_supports = [x for x in support_candidates if x < current]
             support_near = max(valid_supports) if valid_supports else low_20
             
+            # 确保二级支撑不同于一级支撑
             support_far = min(low_60, s2) if s2 < current else low_60
+            if abs(support_far - support_near) < 0.1:  # 如果差异太小，使用更远的支撑
+                support_far = min(low_60, s2 * 0.95) if s2 < current else low_60 * 0.98
             
             resistance_candidates = [high_20, r1, bb_upper]
             if ma_resistance and ma_resistance > current:
