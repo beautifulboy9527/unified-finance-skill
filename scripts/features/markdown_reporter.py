@@ -24,8 +24,16 @@ def generate_markdown_report(result: Dict) -> str:
     
     symbol = result.get('symbol', '')
     name_cn = result.get('name_cn', symbol)
+    if not name_cn:
+        name_cn = symbol
     score = result.get('score', 0)
     recommendation = result.get('recommendation', 'N/A')
+    
+    # 数据质量标记
+    data_quality_score = result.get('data_quality_score', 50)
+    data_quality_label = result.get('data_quality_label', '中等置信度')
+    data_quality_icon = result.get('data_quality_icon', '⚠️')
+    data_quality_desc = result.get('data_quality_desc', '')
     
     # 安全获取数据
     tech = result.get('technical', {})
@@ -38,6 +46,11 @@ def generate_markdown_report(result: Dict) -> str:
     price = result.get('price', {})
     
     current_price = price.get('current', 0)
+    
+    # 安全处理空值
+    safe_name_cn = name_cn if name_cn else "未命名"
+    safe_symbol = symbol if symbol else "未知"
+    
     
     md = f'''# 📊 {name_cn} ({symbol}) 投资分析报告
 
@@ -397,7 +410,7 @@ def generate_markdown_report(result: Dict) -> str:
 
 ## 十二、操作建议
 
-{_generate_action_advice_v2(result)}
+{_generate_action_advice_v2(result, data_quality_score, data_quality_icon, data_quality_label, data_quality_desc)}
 
 ---
 
@@ -701,7 +714,7 @@ def _get_final_conclusion(result: Dict) -> str:
     else:
         return "**建议观望，等待机会**"
 
-def _generate_action_advice_v2(result: Dict) -> str:
+def _generate_action_advice_v2(result: Dict, data_quality_score: float = 50, data_quality_icon: str = '⚠️', data_quality_label: str = '中等置信度', data_quality_desc: str = '') -> str:
     """P1-4修复：操作建议分人群"""
     tech = result.get('technical', {})
     patterns = tech.get('patterns', {})
@@ -772,6 +785,26 @@ def _generate_action_advice_v2(result: Dict) -> str:
         md += "**趋势偏空，建议观望**"
     else:
         md += "**趋势不明，建议观望**"
+    
+    # 添加数据质量说明
+    md += f'''
+
+---
+
+## 数据质量说明
+
+**数据质量分数**: {data_quality_score:.1f}/100
+**置信度**: {data_quality_icon} {data_quality_label}
+**说明**: {data_quality_desc}
+
+'''
+    
+    # 如果有估算数据，添加说明
+    if result.get('technical', {}).get('data_quality') == 'estimated':
+        estimation_method = result.get('technical', {}).get('estimation_method', '未知')
+        md += f'''**注意**: 部分技术指标数据使用估算值（{estimation_method}），建议结合其他分析工具验证。
+
+'''
     
     return md
 

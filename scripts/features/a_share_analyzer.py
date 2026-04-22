@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 A股综合分析报告生成器 v3.0
@@ -11,6 +11,7 @@ A股综合分析报告生成器 v3.0
 
 import sys
 import os
+import logging
 from datetime import datetime
 from typing import Dict, Optional
 import yfinance as yf
@@ -20,6 +21,10 @@ import numpy as np
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 OUTPUT_DIR = r'D:\OpenClaw\outputs\reports'
 
 # 导入多数据源管理器
@@ -28,6 +33,13 @@ try:
     MULTI_SOURCE_AVAILABLE = True
 except ImportError:
     MULTI_SOURCE_AVAILABLE = False
+
+# 导入统一数据层
+try:
+    from unified_data_layer import UnifiedDataLayer, process_stock_data
+    DATA_LAYER_AVAILABLE = True
+except ImportError:
+    DATA_LAYER_AVAILABLE = False
 
 # 导入行业翻译器
 try:
@@ -198,6 +210,8 @@ class AShareAnalyzer:
                      'desc': '工业自动化龙头，受益于智能制造和新能源发展，成长性好'},
         'Guoxin': {'industry': '半导体', 'sector': '科技', 'cycle': '成长期', 'risk': '高',
                    'desc': '国内安全芯片龙头，受益于国产替代和信息安全需求'},
+        'GigaDevice': {'industry': '半导体', 'sector': '科技', 'cycle': '成长期', 'risk': '中',
+                   'desc': '国内存储芯片龙头，主营Nor Flash、MCU和传感器，受益于物联网和国产替代'},
     }
     
     # 行业周期和风险知识库
@@ -310,6 +324,12 @@ class AShareAnalyzer:
         # 11. 操作建议
         result['trading_advice'] = self._generate_trading_advice(result)
         
+        # 12. 统一数据层处理 - 确保数据完整性和质量
+        if DATA_LAYER_AVAILABLE:
+            data_layer = UnifiedDataLayer()
+            result = data_layer.process_data(symbol, result, hist)
+            logger.info(f"数据质量分数: {result.get('data_quality_score', 0):.1f}")
+        
         return result
     
     def _get_market_suffix(self, symbol: str) -> str:
@@ -358,7 +378,7 @@ class AShareAnalyzer:
             '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪',
             '000651': '格力电器', '000333': '美的集团', '002475': '立讯精密',
             '601398': '工商银行', '601288': '农业银行', '600030': '中信证券',
-            '600031': '三一重工', '300124': '汇川技术', '002049': '紫光国微',
+            '600031': '三一重工', '300124': '汇川技术', '002049': '紫光国微', '603986': '兆易创新',
         }
         return names.get(symbol, symbol)
     
@@ -1668,13 +1688,23 @@ class AShareAnalyzer:
         }
         
         # ========== 关键价位监控 ==========
+        # patterns可能是字典或列表
+        if isinstance(patterns, dict):
+            support_far_val = patterns.get('support_far', 0)
+            resistance_far_val = patterns.get('resistance_far', 0)
+            pivot_val = patterns.get('pivot', 0)
+        else:
+            support_far_val = 0
+            resistance_far_val = 0
+            pivot_val = 0
+        
         advice['key_levels'] = {
             'current': current_price,
             'support_near': support_near,
-            'support_far': patterns.get('support_far', 0),
+            'support_far': support_far_val,
             'resistance_near': resistance_near,
-            'resistance_far': patterns.get('resistance_far', 0),
-            'pivot': patterns.get('pivot', 0),
+            'resistance_far': resistance_far_val,
+            'pivot': pivot_val,
             'ma20': technical.get('ma20', 0)
         }
         
