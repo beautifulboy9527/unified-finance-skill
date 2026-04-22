@@ -18,6 +18,13 @@ if sys.platform == 'win32':
 
 from report_validator import calculate_stop_loss_levels
 
+# 导入胜率模型和深度分析
+try:
+    from win_rate_model import WinRateModel, DepthAnalyzer
+    WIN_RATE_AVAILABLE = True
+except ImportError:
+    WIN_RATE_AVAILABLE = False
+
 
 def generate_markdown_report(result: Dict) -> str:
     """生成完整的Markdown报告 v3.0"""
@@ -469,6 +476,16 @@ def _get_volume_eval(ratio: float) -> str:
 
 def _calculate_buffs_v2(result: Dict) -> Tuple[List[Tuple[str, int, str]], int]:
     """计算Buff（P0-2修复：确保一致性）"""
+    
+    # 如果有增强的buff数据，使用它
+    if result.get('buff_enhanced', {}).get('win_rate_based'):
+        buff_data = result['buff_enhanced']
+        buffs = []
+        for buff in buff_data.get('buffs', []):
+            buffs.append((buff['type'], buff['score'], buff['description']))
+        return buffs, buff_data.get('total_score', 0)
+    
+    # 否则使用原有逻辑
     buffs = []
     
     profitability = result.get('profitability', {})
@@ -785,6 +802,16 @@ def _generate_action_advice_v2(result: Dict, data_quality_score: float = 50, dat
         md += "**趋势偏空，建议观望**"
     else:
         md += "**趋势不明，建议观望**"
+    
+    # 添加汇总分析文本（如果有）
+    if result.get('summary_text'):
+        md += f'''
+
+---
+
+{result['summary_text']}
+
+'''
     
     # 添加数据质量说明
     md += f'''

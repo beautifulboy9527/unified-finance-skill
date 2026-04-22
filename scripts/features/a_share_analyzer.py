@@ -41,6 +41,13 @@ try:
 except ImportError:
     DATA_LAYER_AVAILABLE = False
 
+# 导入报告增强模块
+try:
+    from report_enhancer import enhance_report
+    REPORT_ENHANCER_AVAILABLE = True
+except ImportError:
+    REPORT_ENHANCER_AVAILABLE = False
+
 # 导入行业翻译器
 try:
     from industry_translator import translate_industry, translate_sector
@@ -330,6 +337,11 @@ class AShareAnalyzer:
             result = data_layer.process_data(symbol, result, hist)
             logger.info(f"数据质量分数: {result.get('data_quality_score', 0):.1f}")
         
+        # 13. 报告增强 - 胜率、深度分析、汇总文本
+        if REPORT_ENHANCER_AVAILABLE:
+            result = enhance_report(result)
+            logger.info(f"胜率计算完成: {result.get('win_rate', {}).get('win_rate_pct', 'N/A')}")
+        
         return result
     
     def _get_market_suffix(self, symbol: str) -> str:
@@ -378,7 +390,7 @@ class AShareAnalyzer:
             '688295': '中复神鹰', '300750': '宁德时代', '002594': '比亚迪',
             '000651': '格力电器', '000333': '美的集团', '002475': '立讯精密',
             '601398': '工商银行', '601288': '农业银行', '600030': '中信证券',
-            '600031': '三一重工', '300124': '汇川技术', '002049': '紫光国微', '603986': '兆易创新',
+            '600031': '三一重工', '300124': '汇川技术', '002049': '紫光国微', '603986': '兆易创新', '600563': '睿能科技',
         }
         return names.get(symbol, symbol)
     
