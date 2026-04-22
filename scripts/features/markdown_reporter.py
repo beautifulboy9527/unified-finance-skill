@@ -333,11 +333,11 @@ def generate_markdown_report(result: Dict) -> str:
     md += "|----------|------|------|\n"
     
     for buff_type, buff_score, desc in buffs:
-        md += f"| **{buff_type}** | **{buff_score:+d}** | {desc} |\n"
+        md += f"| **{buff_type}** | **{buff_score:+.1f}** | {desc} |\n"
     
     total_text = '偏多' if buff_total > 0 else ('偏空' if buff_total < 0 else '中性')
     
-    md += f"| **总Buff** | **{buff_total:+d}** | **{total_text}** (综合评分 {score}/100) |\n"
+    md += f"| **总Buff** | **{buff_total:+.1f}** | **{total_text}** (综合评分 {score}/100) |\n"
     
     md += f'''
 
