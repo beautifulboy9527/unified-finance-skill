@@ -52,15 +52,18 @@ def _calculate_buff_from_win_rate(result: Dict) -> Dict:
     基于胜率计算Buff
     
     逻辑：
-    - 胜率 > 65% → 强烈看多
-    - 胜率 55-65% → 偏多
-    - 胜率 45-55% → 中性
-    - 胜率 < 45% → 偏空
+    - 胜率 > 65% → 强烈看多 (+5以上)
+    - 胜率 55-65% → 偏多 (+2到+5)
+    - 胜率 45-55% → 中性 (-2到+2)
+    - 胜率 < 45% → 偏空 (-5到-2)
     """
     win_rate_data = result.get('win_rate', {})
     win_rate = win_rate_data.get('win_rate', 0.5)
     
     # 计算buff分数（胜率基准50%）
+    # 胜率50% → buff 0
+    # 胜率60% → buff +3
+    # 胜率70% → buff +6
     buff_score = (win_rate - 0.50) * 20  # -10 到 +10
     
     # 分类buff
@@ -280,9 +283,18 @@ def _generate_summary_text(result: Dict) -> str:
     buff_data = result.get('buff_enhanced', {})
     total_buff = buff_data.get('total_score', 0)
     
-    if total_buff >= 5:
+    # 综合胜率 = 技术面胜率 * 0.4 + 基本面评估 * 0.6
+    # 基本面评估基于buff总分
+    fundamental_score = (total_buff + 10) / 20 * 100  # -10~+10 → 0~100
+    fundamental_rate = fundamental_score / 100
+    
+    # 综合胜率
+    combined_win_rate = win_rate * 0.4 + fundamental_rate * 0.6
+    
+    # 操作建议基于综合胜率
+    if combined_win_rate >= 0.65:
         summary += "✅ **强烈看多**，可积极布局。建议仓位30-50%，设置止损位。\n"
-    elif total_buff >= 2:
+    elif combined_win_rate >= 0.55:
         summary += "⚠️ **偏多**，可适度参与。建议仓位20-30%，关注支撑位。\n"
     elif total_buff >= -2:
         summary += "⚖️ **中性**，建议观望。等待更明确信号再行动。\n"

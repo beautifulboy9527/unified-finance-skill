@@ -193,7 +193,13 @@ class WinRateModel:
         
         # 计算最终胜率
         win_rate = WinRateModel.BASE_WIN_RATE + total_contribution
-        win_rate = max(0.20, min(0.80, win_rate))  # 限制在20%-80%之间
+        
+        # 限制在合理范围(30%-70%)
+        win_rate = max(0.30, min(0.70, win_rate))
+        
+        # 如果信号太少，胜率向50%回归
+        if len(signals) < 2:
+            win_rate = 0.50 + (win_rate - 0.50) * 0.5  # 减半偏离
         
         return {
             'win_rate': win_rate,
